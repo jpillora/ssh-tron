@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/lumanetworks/ansi"
+	"github.com/jpillora/ansi"
 )
 
 type Direction byte
@@ -71,8 +71,8 @@ var charMode = []byte{255, 253, 34, 255, 251, 1}
 
 func (p *Player) setup() {
 
-	col := p.board.Width()
-	row := p.board.TermHeight()
+	col := p.board.width()
+	row := p.board.termHeight()
 
 	//put client into character-mode
 	p.conn.Write(charMode)
@@ -82,12 +82,11 @@ func (p *Player) setup() {
 	//perform ready check
 	p.conn.Goto(1, 1)
 	p.conn.EraseScreen()
-	p.conn.Write([]byte(fmt.Sprintf(
-		"\r\n"+
-			"   Please resize your terminal to %dx%d\r\n"+
-			"   and then line up the top edge with\r\n"+
-			"   the *very top* of your terminal\r\n"+
-			"     [This text should not be visibile]\r\n", col, row)))
+	p.conn.Write([]byte(fmt.Sprintf("\r\n"+
+		"   Please resize your terminal to %dx%d\r\n"+
+		"   and then line up the top edge with\r\n"+
+		"   the *very top* of your terminal\r\n"+
+		"     [This text should not be visibile]\r\n", col, row)))
 
 	for {
 		p.conn.Goto(1000, 1000)
@@ -111,6 +110,7 @@ func (p *Player) teardown() {
 	p.conn.EraseScreen()
 	p.conn.Goto(1, 1)
 	p.conn.Set(ansi.Reset)
+	p.conn.Close()
 	p.exists <- false
 }
 
@@ -124,8 +124,6 @@ func (p *Player) recieveActions() {
 		b := buff[:n]
 		if b[0] == 3 {
 			p.log("close requested")
-			p.teardown()
-			p.conn.Close()
 			break
 		}
 		//parse up,down,left,right
@@ -143,8 +141,9 @@ func (p *Player) recieveActions() {
 			p.respawn()
 			continue
 		}
-		p.log("sent %+v", b)
+		// p.log("sent %+v", b)
 	}
+	p.teardown()
 }
 
 //perform a diff against this players board

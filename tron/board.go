@@ -32,14 +32,14 @@ func NewBoard(width, height uint8) Board {
 	return board
 }
 
-func (b Board) Width() int {
+func (b Board) width() int {
 	return len(b)
 }
 
-func (b Board) Height() int {
+func (b Board) height() int {
 	return len(b[0])
 }
 
-func (b Board) TermHeight() int {
-	return b.Height() / 2
+func (b Board) termHeight() int {
+	return b.height() / 2
 }

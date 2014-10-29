@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/lumanetworks/telnet-tron/tron"
+	"github.com/jpillora/telnet-tron/tron"
 )
 
 var port = flag.Int("port", 3000, "Port to listen for TCP connections on")

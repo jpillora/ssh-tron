@@ -4,10 +4,11 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"regexp"
 	"time"
 
-	"github.com/lumanetworks/ansi"
+	"github.com/jpillora/ansi"
 )
 
 type ID uint16
@@ -55,6 +56,10 @@ func (g *Game) Play() {
 			g.log("  ○ telnet %s %d", ipv4, g.port)
 		}
 	}
+	//watch signals
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go g.watch(c)
 	//accept all
 	for {
 		conn, err := server.AcceptTCP()
@@ -63,6 +68,16 @@ func (g *Game) Play() {
 		}
 		go g.handle(conn)
 	}
+}
+
+func (g *Game) watch(c chan os.Signal) {
+	<-c
+	for _, p := range g.players {
+		p.teardown()
+	}
+	g.log("Closing server...")
+	time.Sleep(300 * time.Millisecond)
+	os.Exit(0)
 }
 
 func (g *Game) initialise() {
@@ -78,9 +93,19 @@ func (g *Game) initialise() {
 }
 
 func (g *Game) handle(conn *net.TCPConn) {
+	//choose an id
+	id := ID(0)
+	taken := true
+	for taken {
+		id++
+		_, taken = g.players[id]
+		if int(id) > g.maxplayers {
+			conn.Write([]byte("This game is full."))
+			conn.Close()
+			return
+		}
+	}
 	//connected
-	g.playerId++
-	id := g.playerId
 	p := NewPlayer(g, conn, id)
 	g.players[id] = p
 	p.play()
