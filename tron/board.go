@@ -2,11 +2,11 @@ package tron
 
 import "log"
 
-const (
-	full = "⣿"
-	top  = "⠛"
-	bot  = "⣤"
-	none = " "
+var (
+	full = []byte("⣿")
+	top  = []byte("⠛")
+	bot  = []byte("⣤")
+	none = []byte(" ")
 )
 
 const (
@@ -20,6 +20,9 @@ func NewBoard(width, height uint8) Board {
 	if height%2 != 0 {
 		log.Fatal("Height must be even")
 	}
+	if width%2 != 0 {
+		log.Fatal("Width must be even")
+	}
 	board := make([][]ID, width)
 	for w := uint8(0); w < width; w++ {
 		board[w] = make([]ID, height)
@@ -28,6 +31,10 @@ func NewBoard(width, height uint8) Board {
 		}
 	}
 	return board
+}
+
+func (b Board) new() Board {
+	return NewBoard(uint8(b.width()), uint8(b.height()))
 }
 
 func (b Board) width() int {

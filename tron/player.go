@@ -3,6 +3,7 @@ package tron
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -20,10 +21,23 @@ const (
 	dleft
 )
 
+var colours = map[ID][]byte{
+	blank: ansi.Set(ansi.White),
+	wall:  ansi.Set(ansi.White),
+	ID(1): ansi.Set(ansi.Blue),
+	ID(2): ansi.Set(ansi.Green),
+	ID(3): ansi.Set(ansi.Magenta),
+	ID(4): ansi.Set(ansi.Cyan),
+	ID(5): ansi.Set(ansi.Yellow),
+	ID(6): ansi.Set(ansi.Red),
+}
+
 type Player struct {
 	id          ID
 	x, y        uint8
-	d           Direction
+	d, nextd    Direction
+	c           []byte
+	row, col    int
 	dead, ready bool
 	exists      chan bool
 	g           *Game
@@ -38,11 +52,11 @@ func NewPlayer(g *Game, conn *net.TCPConn, id ID) *Player {
 	p := &Player{
 		id:     id,
 		g:      g,
+		c:      colours[id],
 		dead:   true,
 		ready:  false,
 		exists: make(chan bool, 1),
 		d:      dup,
-		board:  NewBoard(g.width, g.height),
 		conn:   ansi.Wrap(conn),
 		log:    log.New(os.Stdout, fmt.Sprintf("player-%d: ", id), 0).Printf,
 	}
@@ -53,56 +67,29 @@ func (p *Player) respawn() {
 	if !p.dead || !p.ready {
 		return
 	}
-	p.x = uint8(rand.Intn(int(p.g.width-2))) + 1
-	p.y = uint8(rand.Intn(int(p.g.height-2))) + 1
+	p.x = uint8(rand.Intn(int(p.g.board.width()-2))) + 1
+	p.y = uint8(rand.Intn(int(p.g.board.height()-2))) + 1
 	p.d = Direction(uint8(rand.Intn(4) + 65))
+	p.nextd = p.d
 	p.dead = false
-}
-
-func (p *Player) play() {
-	p.log("connected")
-	go p.recieveActions()
-	p.setup()
-	<-p.exists
-	p.log("disconnected")
 }
 
 var charMode = []byte{255, 253, 34, 255, 251, 1}
 
-func (p *Player) setup() {
-
-	col := p.board.width()
-	row := p.board.termHeight()
+func (p *Player) play() {
+	p.log("connected")
 
 	//put client into character-mode
 	p.conn.Write(charMode)
 	p.conn.Set(ansi.Reset)
 	p.conn.CursorHide()
 
-	//perform ready check
-	p.conn.Goto(1, 1)
-	p.conn.EraseScreen()
-	p.conn.Write([]byte(fmt.Sprintf("\r\n"+
-		"   Please resize your terminal to %dx%d\r\n"+
-		"   and then line up the top edge with\r\n"+
-		"   the *very top* of your terminal\r\n"+
-		"     [This text should not be visibile]\r\n", col, row)))
+	go p.resizeWatch()
+	go p.recieveActions()
 
-	for {
-		p.conn.Goto(1000, 1000)
-		p.conn.QueryCursorPosition()
-		r := <-p.conn.Reports
-		if r.Type == ansi.Position {
-			if r.Pos.Row >= row && r.Pos.Col >= col {
-				break
-			}
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	p.conn.EraseScreen()
-	p.ready = true
-	p.log("ready")
+	//block until player quits
+	<-p.exists
+	p.log("disconnected")
 }
 
 func (p *Player) teardown() {
@@ -131,9 +118,9 @@ func (p *Player) recieveActions() {
 		if len(b) == 3 && b[0] == ansi.Esc &&
 			b[1] == 91 &&
 			b[2] >= byte(dup) && b[2] <= byte(dleft) &&
-			((d%2 == 0 && d-1 != b[2]) ||
+			((d%2 == 0 && d-1 != b[2]) || //while preventing you moving into yourself
 				((d+1)%2 == 0 && d+1 != b[2])) {
-			p.d = Direction(b[2])
+			p.nextd = Direction(b[2])
 			continue
 		}
 		//respawn!
@@ -141,9 +128,48 @@ func (p *Player) recieveActions() {
 			p.respawn()
 			continue
 		}
-		// p.log("sent %+v", b)
+		// p.log("sent action %+v", b)
 	}
 	p.teardown()
+}
+
+var resizeTmpl = string(ansi.Goto(2, 5)) +
+	string(ansi.Set(ansi.White)) +
+	"Please resize your terminal to %dx%d (+%dx+%d)"
+
+func (p *Player) resizeWatch() {
+
+	gcol := p.g.board.width()
+	grow := p.g.board.termHeight()
+
+	for {
+		p.conn.Goto(1000, 1000)
+		p.conn.QueryCursorPosition()
+		r := <-p.conn.Reports
+		if r.Type == ansi.Position {
+			if r.Pos.Row >= grow && r.Pos.Col >= gcol {
+				//fits
+				if !p.ready || p.row != r.Pos.Row || p.col != r.Pos.Col {
+					p.log("resize")
+					p.row = r.Pos.Row
+					p.col = r.Pos.Col
+					p.conn.EraseScreen()
+					p.board = p.g.board.new()
+				}
+				p.ready = true
+			} else {
+				//doesnt fit
+				p.conn.EraseScreen()
+				p.conn.Write([]byte(fmt.Sprintf(resizeTmpl, gcol, grow,
+					int(math.Max(float64(gcol-r.Pos.Col), 0)),
+					int(math.Max(float64(grow-r.Pos.Row), 0)))))
+				p.board = nil
+				p.ready = false
+				p.log("not ready")
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 
 //perform a diff against this players board
@@ -151,25 +177,47 @@ func (p *Player) recieveActions() {
 func (p *Player) update() {
 	pb := p.board
 	gb := p.g.board
+
+	if !p.ready {
+		return
+	}
+
+	cols := gb.width()
+	rows := gb.termHeight()
+
+	//center board with offset width and height
+	ocol := (p.col - cols) / 2
+	orow := (p.row - rows) / 2
+
 	var u []byte
-	for w := uint8(0); w < p.g.width; w++ {
-		for h := uint8(0); h < p.g.height/2; h++ {
+	for w := 0; w < cols; w++ {
+		for h := 0; h < rows; h++ {
 			h1 := h * 2
 			h2 := h1 + 1
 			if pb[w][h1] != gb[w][h1] || pb[w][h2] != gb[w][h2] {
-				var wall string
+				var s, c []byte
+				//choose rune
 				if gb[w][h1] != blank && gb[w][h2] != blank {
-					wall = full
+					s = full
 				} else if gb[w][h1] != blank {
-					wall = top
+					s = top
 				} else if gb[w][h2] != blank {
-					wall = bot
+					s = bot
 				} else {
-					wall = none
+					s = none
 				}
+				//choose color
+				if gb[w][h2] == blank {
+					c = colours[gb[w][h1]]
+				} else {
+					c = colours[gb[w][h2]]
+				}
+
 				//player board is different! queue update
-				u = append(u, ansi.Goto(uint16(h+1), uint16(w+1))...)
-				u = append(u, []byte(wall)...)
+				u = append(u, ansi.Goto(uint16(h+1+orow), uint16(w+1+ocol))...)
+				//draw it
+				u = append(u, c...)
+				u = append(u, s...)
 				pb[w][h1] = gb[w][h1]
 				pb[w][h2] = gb[w][h2]
 			}

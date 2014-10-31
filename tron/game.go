@@ -18,7 +18,6 @@ var matchip = regexp.MustCompile(`^\d+\.\d+\.\d+\.\d+`)
 type Game struct {
 	//settings
 	port, maxplayers, speed int
-	width, height           uint8
 	//state
 	board    Board
 	playerId ID
@@ -29,7 +28,6 @@ type Game struct {
 func NewGame(port, width, height, maxplayers, speed int) *Game {
 	return &Game{
 		port, maxplayers, speed,
-		uint8(width), uint8(height),
 		NewBoard(uint8(width), uint8(height)),
 		0, map[ID]*Player{},
 		log.New(os.Stdout, "server: ", 0).Printf,
@@ -81,14 +79,18 @@ func (g *Game) watch(c chan os.Signal) {
 }
 
 func (g *Game) initialise() {
+
+	gw := g.board.width()
+	gh := g.board.height()
+
 	//build walls
-	for w := uint8(0); w < g.width; w++ {
+	for w := 0; w < gw; w++ {
 		g.board[0][w] = wall
-		g.board[g.height-1][w] = wall
+		g.board[gh-1][w] = wall
 	}
-	for h := uint8(0); h < g.height; h++ {
+	for h := 0; h < gh; h++ {
 		g.board[h][0] = wall
-		g.board[h][g.width-1] = wall
+		g.board[h][gw-1] = wall
 	}
 }
 
@@ -115,8 +117,11 @@ func (g *Game) handle(conn *net.TCPConn) {
 }
 
 func (g *Game) death(pid ID) {
-	for w := uint8(0); w < g.width; w++ {
-		for h := uint8(0); h < g.height; h++ {
+	gw := g.board.width()
+	gh := g.board.height()
+	time.Sleep(55 * time.Second)
+	for w := 0; w < gw; w++ {
+		for h := 0; h < gh; h++ {
 			if g.board[w][h] == pid {
 				g.board[w][h] = blank
 			}
@@ -125,37 +130,42 @@ func (g *Game) death(pid ID) {
 }
 
 func (g *Game) tick() {
-	for _, p := range g.players {
-		//skip this player
-		if p.dead {
-			continue
+	//forever
+	for {
+		//move each player 1 square
+		for _, p := range g.players {
+			//skip this player
+			if p.dead {
+				continue
+			}
+			//move player in [d]irection
+			p.d = p.nextd
+			switch p.d {
+			case dup:
+				p.y--
+			case ddown:
+				p.y++
+			case dleft:
+				p.x--
+			case dright:
+				p.x++
+			}
+			//player is in a wall
+			if g.board[p.x][p.y] != blank {
+				p.dead = true
+				go g.death(p.id)
+				continue
+			}
+			//place a player square
+			g.board[p.x][p.y] = p.id
 		}
-		//move player in [d]irection
-		switch p.d {
-		case dup:
-			p.y--
-		case ddown:
-			p.y++
-		case dleft:
-			p.x--
-		case dright:
-			p.x++
+		//send delta updates to each player
+		for _, p := range g.players {
+			if p.ready {
+				p.update()
+			}
 		}
-		//player is in a wall
-		if g.board[p.x][p.y] != blank {
-			p.dead = true
-			g.death(p.id)
-			continue
-		}
-		//place a player square
-		g.board[p.x][p.y] = p.id
+		//sleep
+		time.Sleep(time.Duration(g.speed) * time.Millisecond)
 	}
-	//send delta updates to each player
-	for _, p := range g.players {
-		if p.ready {
-			p.update()
-		}
-	}
-	time.Sleep(time.Duration(g.speed) * time.Millisecond)
-	g.tick()
 }

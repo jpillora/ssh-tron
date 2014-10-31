@@ -4,15 +4,28 @@ Multiplayer Tron over Telnet written in Go
 
 ### Install
 
-Mac and Linux Gzipped Binaries:
-
-https://github.com/jpillora/telnet-tron/releases
-
 Go Source:
 
 ```
 go get github.com/lumanetworks/telnet-tron
 ```
+
+Mac and Linux Binaries:
+
+```
+$ curl -L https://github.com/jpillora/telnet-tron/releases/download/1.0.0/telnet-tron_darwin_amd64.gz | gzip -d > telnet-tron
+                                                                              OR      linux  368
+$ chmod +x telnet-tron
+$ ./telnet-tron
+$ # ....
+$ #optional
+$ mv telnet-tron /usr/local/bin/
+$ telnet-tron
+```
+
+https://github.com/jpillora/telnet-tron/releases
+
+*Note: It may work under Windows though it is untested*
 
 ### Usage
 
