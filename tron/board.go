@@ -1,13 +1,10 @@
+//the game has a board
+//each player has a board,
+//which are used to
+//send board deltas
 package tron
 
 import "log"
-
-var (
-	full = []byte("⣿")
-	top  = []byte("⠛")
-	bot  = []byte("⣤")
-	none = []byte(" ")
-)
 
 const (
 	wall  = ID(0xffff)
@@ -31,20 +28,4 @@ func NewBoard(width, height uint8) Board {
 		}
 	}
 	return board
-}
-
-func (b Board) new() Board {
-	return NewBoard(uint8(b.width()), uint8(b.height()))
-}
-
-func (b Board) width() int {
-	return len(b)
-}
-
-func (b Board) height() int {
-	return len(b[0])
-}
-
-func (b Board) termHeight() int {
-	return b.height() / 2
 }

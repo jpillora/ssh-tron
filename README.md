@@ -1,64 +1,62 @@
-## telnet-tron
+## tron
 
-Multiplayer Tron over Telnet written in Go
+Multiplayer Tron over SSH, written in Go
 
 ### Install
 
-Go Source:
+#### Unix Binaries:
 
 ```
-go get github.com/lumanetworks/telnet-tron
-```
+# not working yet
 
-Mac and Linux Binaries:
-
-```
-$ curl -L https://github.com/jpillora/telnet-tron/releases/download/1.0.0/telnet-tron_darwin_amd64.gz | gzip -d > telnet-tron
-                                                                              OR      linux  368
-$ chmod +x telnet-tron
-$ ./telnet-tron
+$ curl -L https://github.com/jpillora/tron/releases/download/1.0.0/tron_darwin_amd64.gz | gzip -d > tron
+                                                                OR      linux  368
+$ chmod +x tron
+$ ./tron
 $ # ....
 $ #optional
-$ mv telnet-tron /usr/local/bin/
-$ telnet-tron
+$ mv tron /usr/local/bin/
+$ tron
 ```
 
-https://github.com/jpillora/telnet-tron/releases
+https://github.com/jpillora/tron/releases
 
-*Note: It may work under Windows though it is untested*
+#### Windows:
+
+*It may work under Windows though it's currently untested*
+
+#### Source:
+
+```
+go get -v github.com/jpillora/tron
+```
 
 ### Usage
 
 Server:
 
 ```
-$ telnet-tron
-server: telnet-tron
-server:  join at:
-server:   ○ telnet 127.0.0.1 3000
-server:   ○ telnet 10.1.0.53 3000
+$ tron
+tron: game started (#6 player slots)
+server: server up - join at
+server:   ○ ssh 127.0.0.1 -p 2200
+server:   ○ ssh 10.7.0.108 -p 2200
+server:   ○ ssh 25.24.208.189 -p 2200
+server:   ○ ssh 192.168.136.1 -p 2200
+server:   ○ ssh 172.16.4.1 -p 2200
 ```
 
 Players:
 
 ```
-$ telnet 10.1.0.53 3000
+$ ssh 10.7.0.108 -p 2200
 ```
 
 *Press `Enter` to spawn*
 
-### Todo
-
-* Add line colors
-* Add a status section at the top, with:
-	* Player name (initially prompted)
-	* Scoreboard
-		* Kills / Deaths
-		* Latency
-
 #### MIT License
 
-Copyright © 2014 Luma Networks <contact@lumanetworks.com>
+Copyright © 2014 &lt;dev@jpillora.com&gt;
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
