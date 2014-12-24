@@ -3,6 +3,7 @@
 package tron
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"math"
@@ -261,13 +262,20 @@ func (p *Player) update() {
 	ow := (p.w - p.g.w) / 2
 	oh := (p.h - p.g.h) / 2
 
+	//store the last rendered for network optimisation
+	var lastw, lasth uint16
+	var r rune
+	var c, lastc []byte
+
 	//screen loop
 	var u []byte
 	for h := 0; h < p.g.h; h++ {
 		for tw := 0; tw < p.g.w; tw++ {
 			//rune and color at terminal w x h
-			var r rune = empty
-			var c []byte = colours[blank]
+			r = empty
+			c = colours[blank]
+
+			sidebar := false
 
 			if tw < sidebarWidth {
 				//calculate rune from sidebar
@@ -282,11 +290,11 @@ func (p *Player) update() {
 					rs := p.g.sidebar.runes
 					if h-1 < len(rs) && tw-1 < len(rs[h-1]) {
 						i := (h - 1) / sidebarEntryHeight
-
 						if i < len(p.g.sidebar.ps) {
 							p := p.g.sidebar.ps[i]
 							c = colours[p.id]
 							r = rs[h-1][tw-1]
+							sidebar = true
 						}
 					}
 				}
@@ -312,12 +320,28 @@ func (p *Player) update() {
 				}
 			}
 
-			if p.screen[tw][h] != r || (p.g.sidebar.changed && r != empty) {
-				//player board is different! draw it
-				u = append(u, ansi.Goto(uint16(h+1+oh), uint16(tw+1+ow))...)
-				if c != nil {
-					u = append(u, c...)
+			cacheOverride := p.g.sidebar.changed && sidebar
+
+			//player board is different? draw it
+			if p.screen[tw][h] != r || cacheOverride {
+
+				// p.log("rune differs '%s' %dx%d (%v)", string(r), tw, h, cacheOverride)
+
+				//skip if we only moved one space right
+				nexth := uint16(h + 1 + oh)
+				nextw := uint16(tw + 1 + ow)
+				if nexth != lasth || nextw != lastw+1 {
+					u = append(u, ansi.Goto(nexth, nextw)...)
+					lasth = nexth
+					lastw = nextw
 				}
+				//skip if we didnt change color
+				if c != nil && bytes.Compare(c, lastc) != 0 {
+					u = append(u, c...)
+					lastc = c
+				}
+
+				//write rune
 				u = append(u, []byte(string(r))...)
 				//cache
 				p.screen[tw][h] = r

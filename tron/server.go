@@ -88,9 +88,11 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 	name := sshConn.User()
 	//protect against XTR (cross terminal renderering) attacks
 	name = filtername.ReplaceAllString(name, "")
-	//use the first 10 characters
-	if len(name) > 10 {
-		name = string([]rune(name)[:10])
+
+	//trim name
+	maxlen := sidebarWidth - 6
+	if len(name) > maxlen {
+		name = string([]rune(name)[:maxlen])
 	}
 	//default name
 	if name == "" {

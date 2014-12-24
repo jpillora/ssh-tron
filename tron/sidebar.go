@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-const sidebarWidth = 16
+const sidebarWidth = 14
 const sidebarEntryHeight = 4
 
 type Sidebar struct {

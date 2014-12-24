@@ -2,18 +2,20 @@
 
 Multiplayer Tron over SSH, written in Go
 
-### Install
+![tron](https://cloud.githubusercontent.com/assets/633843/5547708/37c70018-8bb3-11e4-9890-5c82b2096583.png)
 
-#### From Source:
+### Server Install
+
+#### From Source
 
 ```
 go get -v github.com/jpillora/tron
 ```
 
-#### Unix Binaries:
+#### Unix Binaries
 
 ```
-$ curl -L https://github.com/jpillora/tron/releases/download/2.1.0/tron_darwin_amd64.gz | gzip -d > tron
+$ curl -L https://github.com/jpillora/tron/releases/download/2.1.2/tron_darwin_amd64.gz | gzip -d > tron
                                                                 OR      linux  368
 $ chmod +x tron
 $ ./tron
@@ -28,10 +30,9 @@ $ tron
 
 https://github.com/jpillora/tron/releases
 
-#### Windows:
+#### Windows
 
 *It may work under Windows though it's currently untested*
-
 
 ### Usage
 
@@ -47,8 +48,9 @@ Usage of tron:
   -port=2200: Port to listen for TCP connections on
   -speed=25: Game tick interval (in ms)
   -width=60: Width of the game world
+
 $ tron
-tron: game started (#6 player slots)
+tron: game started (#4 player slots)
 server: server up - join at
 server:   ○ ssh 127.0.0.1 -p 2200
 server:   ○ ssh 10.7.0.108 -p 2200
@@ -65,16 +67,18 @@ $ ssh 10.7.0.108 -p 2200
 
 *Press `Enter` to spawn*
 
-### Caution
+### Known Client Issues
 
-:warning: Since the refresh rate of tron is quite high, you need relatively low
-latency to play properly (approximately `<25ms`).
+* Appears best with a dark terminal background
+* The refresh rate is quite high, so you'll need relatively low latency connection to the server to play properly (approximately `<25ms`).
+* Only works on operating systems with [braille unicode characters (e.g. "⠶" and "⠛")](http://en.wikipedia.org/wiki/Braille_Patterns#Chart) installed. Operating systems lacking this characterset will cause the walls to render as the missing character. (Brail)
 
 ### Todo
 
 * Fix race conditions
+* Optimise game calculations
 * Optimise network
-	* VT100 commands
+* `SPACE` to invert colors
 
 #### MIT License
 
