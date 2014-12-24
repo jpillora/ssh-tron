@@ -10,9 +10,9 @@ import (
 )
 
 var port = flag.Int("port", 2200, "Port to listen for TCP connections on")
-var width = flag.Int("width", 80, "Width of the game world")
-var height = flag.Int("height", 80, "Height of the game world")
-var maxplayers = flag.Int("players", 6, "Maximum number of simultaneous players")
+var width = flag.Int("width", 60, "Width of the game world")
+var height = flag.Int("height", 60, "Height of the game world")
+var maxplayers = flag.Int("players", 4, "Maximum number of simultaneous players")
 var maxdeaths = flag.Int("deaths", 10, "Maximum number of deaths before being kicked")
 var speed = flag.Int("speed", 25, "Game tick interval (in ms)")
 var delay = flag.Int("delay", 2000, "Respawn delay (in ms)")

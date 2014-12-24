@@ -88,16 +88,15 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 	name := sshConn.User()
 	//protect against XTR (cross terminal renderering) attacks
 	name = filtername.ReplaceAllString(name, "")
-
 	//use the first 10 characters
-	name = string([]rune(name)[:10])
-
+	if len(name) > 10 {
+		name = string([]rune(name)[:10])
+	}
+	//default name
 	if name == "" {
 		s.log("")
 		name = fmt.Sprintf("player-%d", id)
 	}
-
-	// client := sshConn.ClientVersion()
 
 	//get the first channel
 	c := <-chans

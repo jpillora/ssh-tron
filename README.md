@@ -42,11 +42,11 @@ $ tron --help
 Usage of tron:
   -deaths=10: Maximum number of deaths before being kicked
   -delay=2000: Respawn delay (in ms)
-  -height=80: Height of the game world
-  -players=6: Maximum number of simultaneous players
+  -height=60: Height of the game world
+  -players=4: Maximum number of simultaneous players
   -port=2200: Port to listen for TCP connections on
   -speed=25: Game tick interval (in ms)
-  -width=80: Width of the game world
+  -width=60: Width of the game world
 $ tron
 tron: game started (#6 player slots)
 server: server up - join at
@@ -73,7 +73,8 @@ latency to play properly (approximately `<25ms`).
 ### Todo
 
 * Fix race conditions
-* Optimise VT100 commands
+* Optimise network
+	* VT100 commands
 
 #### MIT License
 
