@@ -4,17 +4,24 @@ Multiplayer Tron over SSH, written in Go
 
 ### Install
 
+#### From Source:
+
+```
+go get -v github.com/jpillora/tron
+```
+
 #### Unix Binaries:
 
 ```
-# not working yet
-
-$ curl -L https://github.com/jpillora/tron/releases/download/1.0.0/tron_darwin_amd64.gz | gzip -d > tron
+$ curl -L https://github.com/jpillora/tron/releases/download/2.1.0/tron_darwin_amd64.gz | gzip -d > tron
                                                                 OR      linux  368
 $ chmod +x tron
 $ ./tron
-$ # ....
-$ #optional
+```
+
+Optionally move to path
+
+```
 $ mv tron /usr/local/bin/
 $ tron
 ```
@@ -25,17 +32,21 @@ https://github.com/jpillora/tron/releases
 
 *It may work under Windows though it's currently untested*
 
-#### Source:
-
-```
-go get -v github.com/jpillora/tron
-```
 
 ### Usage
 
 Server:
 
 ```
+$ tron --help
+Usage of tron:
+  -deaths=10: Maximum number of deaths before being kicked
+  -delay=2000: Respawn delay (in ms)
+  -height=80: Height of the game world
+  -players=6: Maximum number of simultaneous players
+  -port=2200: Port to listen for TCP connections on
+  -speed=25: Game tick interval (in ms)
+  -width=80: Width of the game world
 $ tron
 tron: game started (#6 player slots)
 server: server up - join at
@@ -53,6 +64,16 @@ $ ssh 10.7.0.108 -p 2200
 ```
 
 *Press `Enter` to spawn*
+
+### Caution
+
+:warning: Since the refresh rate of tron is quite high, you need relatively low
+latency to play properly (approximately `<25ms`).
+
+### Todo
+
+* Fix race conditions
+* Optimise VT100 commands
 
 #### MIT License
 

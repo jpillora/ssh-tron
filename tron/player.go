@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/jpillora/ansi"
 	"golang.org/x/crypto/ssh"
@@ -59,6 +60,8 @@ type Player struct {
 	screen [][]rune
 	//player flags
 	dead, ready, waiting, redraw bool
+	//time of death
+	tdeath time.Time
 	//score
 	kills, deaths int
 	//is playing signal
@@ -101,15 +104,46 @@ func (p *Player) resetScreen() {
 	p.redraw = true
 }
 
+const respawnAttempts = 100
+const respawnLookahead = 15
+
 func (p *Player) respawn() {
 	if !p.dead || !p.ready || p.waiting {
 		return
 	}
-	p.x = uint8(rand.Intn(int(p.g.bw-2))) + 1
-	p.y = uint8(rand.Intn(int(p.g.bh-2))) + 1
-	p.d = Direction(uint8(rand.Intn(4) + 65))
-	p.nextd = p.d
-	p.dead = false
+
+	for i := 0; i < respawnAttempts; i++ {
+		//randomly spawn player
+		p.x = uint8(rand.Intn(int(p.g.bw-2))) + 1
+		p.y = uint8(rand.Intn(int(p.g.bh-2))) + 1
+		p.d = Direction(uint8(rand.Intn(4) + 65))
+		p.nextd = p.d
+
+		//look ahead
+		clear := true
+		x, y := p.x, p.y
+		for j := 0; j < respawnLookahead; j++ {
+			switch p.d {
+			case dup:
+				y--
+			case ddown:
+				y++
+			case dleft:
+				x--
+			case dright:
+				x++
+			}
+			if p.g.board[x][y] != blank {
+				clear = false
+				break
+			}
+		}
+		//when clear, mark player as alive
+		if clear {
+			p.dead = false
+			break
+		}
+	}
 }
 
 func (p *Player) play() {
@@ -139,6 +173,17 @@ func (p *Player) teardown_() {
 	p.conn.Set(ansi.Reset)
 	p.conn.Close()
 	close(p.playing)
+}
+
+func (p *Player) status() string {
+	if !p.ready {
+		return "not ready"
+	} else if p.dead && p.waiting {
+		return fmt.Sprintf("dead %1.1f", (p.g.delay - time.Since(p.tdeath)).Seconds())
+	} else if p.dead {
+		return "ready"
+	}
+	return "playing"
 }
 
 func (p *Player) recieveActions() {
@@ -220,8 +265,8 @@ func (p *Player) update() {
 	var u []byte
 	for h := 0; h < p.g.h; h++ {
 		for tw := 0; tw < p.g.w; tw++ {
-			//pixel rune and color
-			var r rune
+			//rune and color at terminal w x h
+			var r rune = empty
 			var c []byte = colours[blank]
 
 			if tw < sidebarWidth {
@@ -237,10 +282,12 @@ func (p *Player) update() {
 					rs := p.g.sidebar.runes
 					if h-1 < len(rs) && tw-1 < len(rs[h-1]) {
 						i := (h - 1) / sidebarEntryHeight
-						c = colours[p.g.sidebar.ps[i].id]
-						r = rs[h-1][tw-1]
-					} else {
-						r = empty
+
+						if i < len(p.g.sidebar.ps) {
+							p := p.g.sidebar.ps[i]
+							c = colours[p.id]
+							r = rs[h-1][tw-1]
+						}
 					}
 				}
 
@@ -256,8 +303,6 @@ func (p *Player) update() {
 					r = top
 				} else if gb[gw][h2] != blank {
 					r = bottom
-				} else {
-					r = empty
 				}
 				//choose color
 				if gb[gw][h2] == blank {

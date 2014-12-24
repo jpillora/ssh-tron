@@ -11,7 +11,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-var matchip = regexp.MustCompile(`^\d+\.\d+\.\d+\.\d+`)
+var matchip = regexp.MustCompile(`^\d+\.\d+\.\d+\.\d+`) //TODO: make correct
+var filtername = regexp.MustCompile(`\W`)               //non-words
 
 type Server struct {
 	port       int
@@ -33,7 +34,7 @@ func NewServer(port int, idPool <-chan ID) *Server {
 }
 
 func (s *Server) start() {
-	s.log("server up - join at")
+	s.log("up - join at")
 	addrs, _ := net.InterfaceAddrs()
 	for _, a := range addrs {
 		ipv4 := matchip.FindString(a.String())
@@ -52,6 +53,7 @@ func (s *Server) start() {
 	for {
 		tcpConn, err := server.AcceptTCP()
 		if err != nil {
+			s.log("accept error (%s)", err)
 			continue
 		}
 		go s.handle(tcpConn)
@@ -84,6 +86,12 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 
 	//get user and client info
 	name := sshConn.User()
+	//protect against XTR (cross terminal renderering) attacks
+	name = filtername.ReplaceAllString(name, "")
+
+	//use the first 10 characters
+	name = string([]rune(name)[:10])
+
 	if name == "" {
 		s.log("")
 		name = fmt.Sprintf("player-%d", id)

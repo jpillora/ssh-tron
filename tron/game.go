@@ -9,13 +9,13 @@ import (
 	"time"
 )
 
-const maxdeaths = 10
-
 type ID uint16
 
 type Game struct {
 	//settings
-	maxplayers, speed int
+	maxplayers, maxdeaths int
+	//game speed and respawn delay
+	speed, delay time.Duration
 	//total score+board size
 	w, h, bw, bh int
 	//ssh server
@@ -29,7 +29,7 @@ type Game struct {
 	log      func(string, ...interface{})
 }
 
-func NewGame(port, width, height, maxplayers, speed int) *Game {
+func NewGame(port, width, height, maxplayers, maxdeaths, speed, delay int) *Game {
 
 	//create an id pool
 	idPool := make(chan ID, maxplayers)
@@ -38,7 +38,9 @@ func NewGame(port, width, height, maxplayers, speed int) *Game {
 	}
 
 	g := &Game{
-		maxplayers, speed,
+		maxplayers, maxdeaths,
+		time.Duration(speed) * time.Millisecond,
+		time.Duration(delay) * time.Millisecond,
 		width + sidebarWidth, height / 2, width, height,
 		NewServer(port, idPool),
 		nil,
@@ -99,24 +101,23 @@ func (g *Game) handle(p *Player) {
 	//set game and id then play (blocking)
 	p.g = g
 	g.players[p.id] = p
-	g.sidebar.render()
 	p.play()
 	//disconnected
 	delete(g.players, p.id)
 	g.death(p)
 	//reinsert back into pool
 	g.idPool <- p.id
-	g.sidebar.render()
 }
 
 func (g *Game) death(p *Player) {
 	p.waiting = true
 	p.deaths++
+	p.tdeath = time.Now()
 
-	//render on score change
-	g.sidebar.render()
+	//leave player on board for [delay]ms
+	time.Sleep(g.delay)
 
-	time.Sleep(2 * time.Second)
+	//clear!
 	for w := 0; w < g.bw; w++ {
 		for h := 0; h < g.bh; h++ {
 			if g.board[w][h] == p.id {
@@ -124,10 +125,11 @@ func (g *Game) death(p *Player) {
 			}
 		}
 	}
+
 	p.waiting = false
 
 	//maximum deaths! kick!
-	if p.deaths == maxdeaths {
+	if p.deaths == g.maxdeaths {
 		p.teardown()
 	}
 }
@@ -169,6 +171,10 @@ func (g *Game) tick() {
 			//place a player square
 			g.board[p.x][p.y] = p.id
 		}
+
+		//render the sidebar (and potentially flip the changed flag)
+		g.sidebar.render()
+
 		//send delta updates to each player
 		for _, p := range g.players {
 			if p.ready {
@@ -178,6 +184,6 @@ func (g *Game) tick() {
 		//mark update sent to all
 		g.sidebar.changed = false
 		//sleep
-		time.Sleep(time.Duration(g.speed) * time.Millisecond)
+		time.Sleep(g.speed)
 	}
 }
