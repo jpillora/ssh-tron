@@ -1,34 +1,34 @@
-## tron
+## ssh-tron
 
 Multiplayer Tron over SSH, written in Go
 
-![tron](https://cloud.githubusercontent.com/assets/633843/5547708/37c70018-8bb3-11e4-9890-5c82b2096583.png)
+![tron](https://rawgit.com/jpillora/ssh-tron/master/demo.gif)
 
 ### Server Install
 
 #### From Source
 
 ```
-go get -v github.com/jpillora/tron
+go get -v github.com/jpillora/ssh-tron
 ```
 
 #### Unix Binaries
 
 ```
-$ curl -L https://github.com/jpillora/tron/releases/download/2.1.2/tron_darwin_amd64.gz | gzip -d > tron
-                                                                OR      linux  368
+$ curl -"#" -L https://github.com/jpillora/ssh-tron/releases/download/2.1.2/tron_darwin_amd64.gz | gzip -d > tron
+#                                     ...change OS and ARCH as necessary...      linux  368
 $ chmod +x tron
 $ ./tron
 ```
 
-Optionally move to path
+Optionally move to PATH
 
 ```
 $ mv tron /usr/local/bin/
 $ tron
 ```
 
-https://github.com/jpillora/tron/releases
+https://github.com/jpillora/ssh-tron/releases
 
 #### Windows
 
@@ -70,15 +70,16 @@ $ ssh 10.7.0.108 -p 2200
 ### Known Client Issues
 
 * Appears best with a dark terminal background
-* The refresh rate is quite high, so you'll need relatively low latency connection to the server to play properly (approximately `<25ms`).
-* Only works on operating systems with [braille unicode characters (e.g. "⠶" and "⠛")](http://en.wikipedia.org/wiki/Braille_Patterns#Chart) installed. Operating systems lacking this characterset will cause the walls to render as the missing character. (Brail)
+* The refresh rate is quite high, so you'll need relatively low latency connection to the server to play properly (approximately less than 25ms).
+* Only works on operating systems with [braille unicode characters (e.g. "⠶" and "⠛")](http://en.wikipedia.org/wiki/Braille_Patterns#Chart) installed. Operating systems lacking this character set will cause the walls to render as the missing glyph (square or diamond).
 
 ### Todo
 
 * Fix race conditions
 * Optimise game calculations
 * Optimise network
-* `SPACE` to invert colors
+* `SPACE` to invert colours
+* Add "all players reset on any death" option. 
 
 #### MIT License
 

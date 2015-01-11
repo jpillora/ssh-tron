@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/jpillora/tron/tron"
+	"github.com/jpillora/ssh-tron/tron"
 )
 
 var port = flag.Int("port", 2200, "Port to listen for TCP connections on")
