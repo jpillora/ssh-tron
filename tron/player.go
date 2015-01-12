@@ -150,7 +150,6 @@ func (p *Player) respawn() {
 func (p *Player) play() {
 	p.log("connected")
 
-	//put client into character-mode
 	p.conn.Set(ansi.Reset)
 	p.conn.CursorHide()
 
@@ -163,7 +162,7 @@ func (p *Player) play() {
 }
 
 func (p *Player) teardown() {
-	//guard teardown to execute only once
+	//guard teardown to execute only once per player
 	p.once.Do(p.teardown_)
 }
 
@@ -248,8 +247,7 @@ func (p *Player) resizeWatch() {
 	}
 }
 
-//based on player screen size, calculate, store and send screen.
-//repeat at each tick, however, only send if different from stored.
+//every tick, based on player screen size - calculate, store and send screen deltas.
 func (p *Player) update() {
 
 	if !p.ready {

@@ -1,6 +1,6 @@
 ## ssh-tron
 
-Multiplayer Tron over SSH, written in Go
+Multiplayer [Tron](http://www.classicgamesarcade.com/game/21670/tron-game.html) over SSH, written in Go
 
 ![tron](https://rawgit.com/jpillora/ssh-tron/master/demo.gif)
 
@@ -9,7 +9,8 @@ Multiplayer Tron over SSH, written in Go
 #### From Source
 
 ```
-go get -v github.com/jpillora/ssh-tron
+$ go get -v github.com/jpillora/ssh-tron
+$ tron
 ```
 
 #### Unix Binaries
@@ -54,7 +55,6 @@ tron: game started (#4 player slots)
 server: server up - join at
 server:   ○ ssh 127.0.0.1 -p 2200
 server:   ○ ssh 10.7.0.108 -p 2200
-server:   ○ ssh 25.24.208.189 -p 2200
 server:   ○ ssh 192.168.136.1 -p 2200
 server:   ○ ssh 172.16.4.1 -p 2200
 ```
@@ -70,16 +70,20 @@ $ ssh 10.7.0.108 -p 2200
 ### Known Client Issues
 
 * Appears best with a dark terminal background
-* The refresh rate is quite high, so you'll need relatively low latency connection to the server to play properly (approximately less than 25ms).
+* The refresh rate is quite high, so you'll need a low latency connection to the server to play effectively (approximately less than 25ms).
 * Only works on operating systems with [braille unicode characters (e.g. "⠶" and "⠛")](http://en.wikipedia.org/wiki/Braille_Patterns#Chart) installed. Operating systems lacking this character set will cause the walls to render as the missing glyph (square or diamond).
 
 ### Todo
 
-* Fix race conditions
+* Support multi-core (Fix race conditions)
 * Optimise game calculations
 * Optimise network
 * `SPACE` to invert colours
-* Add "all players reset on any death" option. 
+* Add "kills" option (end the game once someone reaches `kills`)
+* Add "all players reset on any death" option.
+* Extract code to produce a generic 2D multi-player game engine
+	* Bomber man
+	* Dungeon explorer
 
 #### MIT License
 
