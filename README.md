@@ -10,7 +10,7 @@ Multiplayer [Tron](http://www.classicgamesarcade.com/game/21670/tron-game.html) 
 
 ```
 $ go get -v github.com/jpillora/ssh-tron
-$ tron
+$ ssh-tron
 ```
 
 #### Unix Binaries
