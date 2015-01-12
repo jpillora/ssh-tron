@@ -29,7 +29,7 @@ type Game struct {
 	log      func(string, ...interface{})
 }
 
-func NewGame(port, width, height, maxplayers, maxdeaths, speed, delay int) *Game {
+func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.Duration) *Game {
 
 	//create an id pool
 	idPool := make(chan ID, maxplayers)
@@ -39,8 +39,8 @@ func NewGame(port, width, height, maxplayers, maxdeaths, speed, delay int) *Game
 
 	g := &Game{
 		maxplayers, maxdeaths,
-		time.Duration(speed) * time.Millisecond,
-		time.Duration(delay) * time.Millisecond,
+		speed,
+		delay,
 		width + sidebarWidth, height / 2, width, height,
 		NewServer(port, idPool),
 		nil,
