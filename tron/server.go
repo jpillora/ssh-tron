@@ -19,7 +19,7 @@ var (
 type Server struct {
 	port       int
 	idPool     <-chan ID
-	logf       func(format string, vars ...interface{})
+	logf       func(format string, args ...interface{})
 	sshConfig  *ssh.ServerConfig
 	newPlayers chan *Player
 }

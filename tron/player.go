@@ -61,7 +61,7 @@ type Player struct {
 	g                            *Game
 	resizes                      chan resize
 	conn                         *ansi.Ansi
-	logf                         func(format string, vars ...interface{})
+	logf                         func(format string, args ...interface{})
 	once                         *sync.Once
 }
 

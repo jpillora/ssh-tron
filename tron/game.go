@@ -21,7 +21,7 @@ type Game struct {
 	idPool                chan ID
 	playerId              ID
 	players               map[ID]*Player
-	logf                  func(format string, vars ...interface{})
+	logf                  func(format string, args ...interface{})
 }
 
 func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.Duration) (*Game, error) {
@@ -50,7 +50,8 @@ func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.D
 		server,
 		nil,
 		board,
-		idPool, 0, map[ID]*Player{},
+		idPool, 0,
+		make(map[ID]*Player),
 		log.New(os.Stdout, "tron: ", 0).Printf,
 	}
 

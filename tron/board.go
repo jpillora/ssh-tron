@@ -13,10 +13,10 @@ type Board [][]ID
 
 func NewBoard(width, height uint8) (Board, error) {
 	if height%2 != 0 {
-		return nil, errors.New("Height must be even")
+		return nil, errors.New("height must be even")
 	}
 	if width%2 != 0 {
-		return nil, errors.New("Width must be even")
+		return nil, errors.New("width must be even")
 	}
 
 	board := make([][]ID, width)
