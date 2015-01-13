@@ -11,49 +11,55 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-var matchip = regexp.MustCompile(`^\d+\.\d+\.\d+\.\d+`) //TODO: make correct
-var filtername = regexp.MustCompile(`\W`)               //non-words
+var (
+	matchip    = regexp.MustCompile(`^\d+\.\d+\.\d+\.\d+`) // TODO: make correct
+	filtername = regexp.MustCompile(`\W`)                  // non-words
+)
 
 type Server struct {
 	port       int
 	idPool     <-chan ID
-	log        func(string, ...interface{})
+	logf       func(format string, args ...interface{})
 	sshConfig  *ssh.ServerConfig
 	newPlayers chan *Player
 }
 
-func NewServer(port int, idPool <-chan ID) *Server {
+func NewServer(port int, idPool <-chan ID) (*Server, error) {
+	config, err := generateConfig()
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
 		port:       port,
 		idPool:     idPool,
-		log:        log.New(os.Stdout, "server: ", 0).Printf,
-		sshConfig:  generateConfig(),
+		logf:       log.New(os.Stdout, "server: ", 0).Printf,
+		sshConfig:  config,
 		newPlayers: make(chan *Player),
 	}
-	return s
+	return s, nil
 }
 
 func (s *Server) start() {
-	s.log("up - join at")
+	s.logf("up - join at")
 	addrs, _ := net.InterfaceAddrs()
 	for _, a := range addrs {
 		ipv4 := matchip.FindString(a.String())
 		if ipv4 != "" {
-			s.log("  ○ ssh %s -p %d", ipv4, s.port)
+			s.logf("  ○ ssh %s -p %d", ipv4, s.port)
 		}
 	}
-	// s.log(" optionally provide a user@ name (player name)")
+	// s.logf(" optionally provide a user@ name (player name)")
 
-	//bind to provided port
+	// bind to provided port
 	server, err := net.ListenTCP("tcp4", &net.TCPAddr{Port: s.port})
 	if err != nil {
 		log.Fatal(err)
 	}
-	//accept all tcp
+	// accept all tcp
 	for {
 		tcpConn, err := server.AcceptTCP()
 		if err != nil {
-			s.log("accept error (%s)", err)
+			s.logf("accept error (%s)", err)
 			continue
 		}
 		go s.handle(tcpConn)
@@ -62,21 +68,21 @@ func (s *Server) start() {
 
 func (s *Server) handle(tcpConn *net.TCPConn) {
 
-	//non-blocking pull off the id pool
+	// non-blocking pull off the id pool
 	var id ID
 	select {
 	case id, _ = <-s.idPool:
 	default:
 	}
 
-	//perform handshake
+	// perform handshake
 	sshConn, chans, globalReqs, err := ssh.NewServerConn(tcpConn, s.sshConfig)
 	if err != nil {
-		s.log("failed to handshake (%s)", err)
+		s.logf("failed to handshake (%s)", err)
 		return
 	}
 
-	//global requests must be serviced - discard
+	// global requests must be serviced - discard
 	go func() {
 		noop := func(arg interface{}) {}
 		for req := range globalReqs {
@@ -84,33 +90,33 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 		}
 	}()
 
-	//get user and client info
+	// get user and client info
 	name := sshConn.User()
-	//protect against XTR (cross terminal renderering) attacks
+	// protect against XTR (cross terminal renderering) attacks
 	name = filtername.ReplaceAllString(name, "")
 
-	//trim name
+	// trim name
 	maxlen := sidebarWidth - 6
 	if len(name) > maxlen {
 		name = string([]rune(name)[:maxlen])
 	}
-	//default name
+	// default name
 	if name == "" {
-		s.log("")
+		s.logf("")
 		name = fmt.Sprintf("player-%d", id)
 	}
 
-	//get the first channel
+	// get the first channel
 	c := <-chans
 
-	//channel requests must be serviced - reject
+	// channel requests must be serviced - reject
 	go func() {
 		for c := range chans {
 			c.Reject(ssh.Prohibited, "only 1 channel allowed")
 		}
 	}()
 
-	//must be a 'session'
+	// must be a 'session'
 	if t := c.ChannelType(); t != "session" {
 		c.Reject(ssh.UnknownChannelType, fmt.Sprintf("unknown channel type: %s", t))
 		return
@@ -118,11 +124,11 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 
 	conn, chanReqs, err := c.Accept()
 	if err != nil {
-		s.log("could not accept channel (%s)", err)
+		s.logf("could not accept channel (%s)", err)
 		return
 	}
 
-	//show fullgame error
+	// show fullgame error
 	if id == 0 {
 		conn.Write([]byte("This game is full.\r\n"))
 		tcpConn.Close()
@@ -149,7 +155,7 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 				p.resizes <- parseDims(r.Payload[strlen+4:])
 			case "window-change":
 				p.resizes <- parseDims(r.Payload)
-				continue //no response
+				continue // no response
 			}
 			r.Reply(ok, nil)
 
@@ -159,7 +165,7 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 	s.newPlayers <- p
 }
 
-//tron doesnt need security :) DONT DO THIS IRL
+// tron doesnt need security :) DONT DO THIS IRL
 const privateKey = `
 -----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEAzNO5vZPpP7WgXA3Ck5NeCq85i1v2JCB5vM0udK+oWrCQpMdy
@@ -190,25 +196,34 @@ V6WZNy6k5Amx54pv59U34sEiGqFb8xo9Q0o+jcdrirTJKvuJuGh5Hm/4jjRvu4O3
 -----END RSA PRIVATE KEY-----
 `
 
-func generateConfig() *ssh.ServerConfig {
+func generateConfig() (*ssh.ServerConfig, error) {
 	// An SSH server is represented by a ServerConfig, which holds
 	// certificate details and handles authentication of ServerConns.
 	config := &ssh.ServerConfig{
 		KeyboardInteractiveCallback: func(conn ssh.ConnMetadata, client ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
-			return nil, nil //no challege - we just want username
+			return nil, nil // no challenge, we just want username
 		},
 	}
-	p, _ := ssh.ParsePrivateKey([]byte(privateKey))
+	p, err := ssh.ParsePrivateKey([]byte(privateKey))
+	if err != nil {
+		return nil, err
+	}
 	config.AddHostKey(p)
-	return config
+	return config, nil
 }
 
 // parseDims extracts two uint32s from the provided buffer.
 func parseDims(b []byte) resize {
 	if len(b) < 8 {
-		return resize{width: 0, height: 0}
+		return resize{
+			width:  0,
+			height: 0,
+		}
 	}
 	w := binary.BigEndian.Uint32(b)
 	h := binary.BigEndian.Uint32(b[4:])
-	return resize{width: w, height: h}
+	return resize{
+		width:  w,
+		height: h,
+	}
 }

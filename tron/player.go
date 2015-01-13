@@ -1,5 +1,3 @@
-//a player represents a live tcp
-//connection from a client
 package tron
 
 import (
@@ -47,33 +45,26 @@ type resize struct {
 	width, height uint32
 }
 
+// A Player represents a live TCP connection from a client
 type Player struct {
-	//identification
-	id          ID
-	name, cname string
-	//position
-	x, y uint8
-	//direction
-	d, nextd Direction
-	//terminal size
-	w, h int
-	//the player's view of the screen
-	screen [][]rune
-	//player flags
-	dead, ready, waiting, redraw bool
-	//time of death
-	tdeath time.Time
-	//score
-	kills, deaths int
-	//is playing signal
-	playing chan bool
-	g       *Game
-	resizes chan resize
-	conn    *ansi.Ansi
-	log     func(string, ...interface{})
-	once    *sync.Once
+	id                           ID // identification
+	name, cname                  string
+	x, y                         uint8     // position
+	d, nextd                     Direction // direction
+	w, h                         int       // terminal size
+	screen                       [][]rune  // the player's view of the screen
+	dead, ready, waiting, redraw bool      // player flags
+	tdeath                       time.Time // time of death
+	kills, deaths                int       // score
+	playing                      chan bool // is playing signal
+	g                            *Game
+	resizes                      chan resize
+	conn                         *ansi.Ansi
+	logf                         func(format string, args ...interface{})
+	once                         *sync.Once
 }
 
+// NewPlayer returns an initialized Player.
 func NewPlayer(id ID, name string, conn ssh.Channel) *Player {
 
 	colouredName := fmt.Sprintf("%s%s%s", colours[id], name, ansi.Set(ansi.Reset))
@@ -88,7 +79,7 @@ func NewPlayer(id ID, name string, conn ssh.Channel) *Player {
 		d:       dup,
 		resizes: make(chan resize),
 		conn:    ansi.Wrap(conn),
-		log:     log.New(os.Stdout, colouredName+" ", 0).Printf,
+		logf:    log.New(os.Stdout, colouredName+" ", 0).Printf,
 		once:    &sync.Once{},
 	}
 	return p
@@ -105,8 +96,10 @@ func (p *Player) resetScreen() {
 	p.redraw = true
 }
 
-const respawnAttempts = 100
-const respawnLookahead = 15
+const (
+	respawnAttempts  = 100
+	respawnLookahead = 15
+)
 
 func (p *Player) respawn() {
 	if !p.dead || !p.ready || p.waiting {
@@ -114,13 +107,13 @@ func (p *Player) respawn() {
 	}
 
 	for i := 0; i < respawnAttempts; i++ {
-		//randomly spawn player
+		// randomly spawn player
 		p.x = uint8(rand.Intn(int(p.g.bw-2))) + 1
 		p.y = uint8(rand.Intn(int(p.g.bh-2))) + 1
 		p.d = Direction(uint8(rand.Intn(4) + 65))
 		p.nextd = p.d
 
-		//look ahead
+		// look ahead
 		clear := true
 		x, y := p.x, p.y
 		for j := 0; j < respawnLookahead; j++ {
@@ -139,7 +132,7 @@ func (p *Player) respawn() {
 				break
 			}
 		}
-		//when clear, mark player as alive
+		// when clear, mark player as alive
 		if clear {
 			p.dead = false
 			break
@@ -148,7 +141,7 @@ func (p *Player) respawn() {
 }
 
 func (p *Player) play() {
-	p.log("connected")
+	p.logf("connected")
 
 	p.conn.Set(ansi.Reset)
 	p.conn.CursorHide()
@@ -156,17 +149,17 @@ func (p *Player) play() {
 	go p.resizeWatch()
 	go p.recieveActions()
 
-	//block until player disconnects
+	// block until player disconnects
 	<-p.playing
-	p.log("disconnected")
+	p.logf("disconnected")
 }
 
 func (p *Player) teardown() {
-	//guard teardown to execute only once per player
-	p.once.Do(p.teardown_)
+	// guard teardown to execute only once per player
+	p.once.Do(p.teardownMeta)
 }
 
-func (p *Player) teardown_() {
+func (p *Player) teardownMeta() {
 	p.conn.CursorShow()
 	p.conn.EraseScreen()
 	p.conn.Goto(1, 1)
@@ -197,25 +190,25 @@ func (p *Player) recieveActions() {
 		if b[0] == 3 {
 			break
 		}
-		//ignore actions until ready
+		// ignore actions until ready
 		if !p.ready {
 			continue
 		}
-		//parse up,down,left,right
+		// parse up,down,left,right
 		d := byte(p.d)
 		if len(b) == 3 && b[0] == ansi.Esc && b[1] == 91 &&
 			b[2] >= byte(dup) && b[2] <= byte(dleft) &&
-			//while preventing player from moving into itself (odd<->even)
+			// while preventing player from moving into itself (odd<->even)
 			((d%2 == 0 && d-1 != b[2]) || ((d+1)%2 == 0 && d+1 != b[2])) {
 			p.nextd = Direction(b[2])
 			continue
 		}
-		//respawn!
+		// respawn!
 		if b[0] == 13 {
 			p.respawn()
 			continue
 		}
-		// p.log("sent action %+v", b)
+		// p.logf("sent action %+v", b)
 	}
 	p.teardown()
 }
@@ -229,14 +222,14 @@ func (p *Player) resizeWatch() {
 	for r := range p.resizes {
 		p.w = int(r.width)
 		p.h = int(r.height)
-		//fits?
+		// fits?
 		if p.w >= p.g.w && p.h >= p.g.h {
 			p.conn.EraseScreen()
 			p.resetScreen()
-			//send updates!
+			// send updates!
 			p.ready = true
 		} else {
-			//doesnt fit
+			// doesnt fit
 			p.conn.EraseScreen()
 			p.conn.Write([]byte(fmt.Sprintf(resizeTmpl, p.g.w, p.g.h,
 				int(math.Max(float64(p.g.w-p.w), 0)),
@@ -247,7 +240,7 @@ func (p *Player) resizeWatch() {
 	}
 }
 
-//every tick, based on player screen size - calculate, store and send screen deltas.
+// every tick, based on player screen size - calculate, store and send screen deltas.
 func (p *Player) update() {
 
 	if !p.ready {
@@ -256,27 +249,27 @@ func (p *Player) update() {
 
 	gb := p.g.board
 
-	//center board with offset width and height
+	// center board with offset width and height
 	ow := (p.w - p.g.w) / 2
 	oh := (p.h - p.g.h) / 2
 
-	//store the last rendered for network optimisation
+	// store the last rendered for network optimisation
 	var lastw, lasth uint16
 	var r rune
 	var c, lastc []byte
 
-	//screen loop
+	// screen loop
 	var u []byte
 	for h := 0; h < p.g.h; h++ {
 		for tw := 0; tw < p.g.w; tw++ {
-			//rune and color at terminal w x h
+			// rune and color at terminal w x h
 			r = empty
 			c = colours[blank]
 
 			sidebar := false
 
 			if tw < sidebarWidth {
-				//calculate rune from sidebar
+				// calculate rune from sidebar
 				if tw == 0 {
 					r = filled
 				} else if h == 0 {
@@ -298,11 +291,11 @@ func (p *Player) update() {
 				}
 
 			} else {
-				//calculate rune from game
+				// calculate rune from game
 				gw := tw - sidebarWidth
 				h1 := h * 2
 				h2 := h1 + 1
-				//choose rune
+				// choose rune
 				if gb[gw][h1] != blank && gb[gw][h2] != blank {
 					r = filled
 				} else if gb[gw][h1] != blank {
@@ -310,7 +303,7 @@ func (p *Player) update() {
 				} else if gb[gw][h2] != blank {
 					r = bottom
 				}
-				//choose color
+				// choose color
 				if gb[gw][h2] == blank {
 					c = colours[gb[gw][h1]]
 				} else {
@@ -320,12 +313,12 @@ func (p *Player) update() {
 
 			cacheOverride := p.g.sidebar.changed && sidebar
 
-			//player board is different? draw it
+			// player board is different? draw it
 			if p.screen[tw][h] != r || cacheOverride {
 
-				// p.log("rune differs '%s' %dx%d (%v)", string(r), tw, h, cacheOverride)
+				// p.logf("rune differs '%s' %dx%d (%v)", string(r), tw, h, cacheOverride)
 
-				//skip if we only moved one space right
+				// skip if we only moved one space right
 				nexth := uint16(h + 1 + oh)
 				nextw := uint16(tw + 1 + ow)
 				if nexth != lasth || nextw != lastw+1 {
@@ -333,15 +326,15 @@ func (p *Player) update() {
 					lasth = nexth
 					lastw = nextw
 				}
-				//skip if we didnt change color
+				// skip if we didnt change color
 				if c != nil && bytes.Compare(c, lastc) != 0 {
 					u = append(u, c...)
 					lastc = c
 				}
 
-				//write rune
+				// write rune
 				u = append(u, []byte(string(r))...)
-				//cache
+				// cache
 				p.screen[tw][h] = r
 			}
 		}
@@ -351,7 +344,7 @@ func (p *Player) update() {
 		return
 	}
 
-	// p.log("send %d", len(u))
+	// p.logf("send %d", len(u))
 
 	p.conn.Write(u)
 }
