@@ -18,15 +18,14 @@ type Sidebar struct {
 	changed bool
 }
 
-func NewSidebar(g *Game) *Sidebar {
+func (g *Game) initSidebar() {
 	// sidebar height - top and bottom rows are borders
 	h := g.h - 2
-	sb := &Sidebar{
+	g.sidebar = &Sidebar{
 		g:      g,
 		height: h,
 		runes:  make([][]rune, h),
 	}
-	return sb
 }
 
 func (sb *Sidebar) render() {

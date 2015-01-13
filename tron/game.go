@@ -49,7 +49,7 @@ func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.D
 		log.New(os.Stdout, "tron: ", 0).Printf,
 	}
 
-	g.sidebar = NewSidebar(g)
+	g.initSidebar()
 
 	return g, nil
 }
