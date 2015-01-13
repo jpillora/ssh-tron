@@ -14,7 +14,7 @@ type Game struct {
 	speed, delay          time.Duration // game speed and respawn delay
 	w, h, bw, bh          int           // total score+board size
 	server                *Server       // ssh server
-	sidebar               *Sidebar      // state
+	sidebar               *sidebar      // state
 	board                 Board
 	idPool                chan ID
 	playerId              ID

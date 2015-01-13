@@ -155,10 +155,10 @@ func (p *Player) play() {
 
 func (p *Player) teardown() {
 	// guard teardown to execute only once per player
-	p.once.Do(p.teardown_)
+	p.once.Do(p.teardownMeta)
 }
 
-func (p *Player) teardown_() {
+func (p *Player) teardownMeta() {
 	p.conn.CursorShow()
 	p.conn.EraseScreen()
 	p.conn.Goto(1, 1)
