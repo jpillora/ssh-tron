@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	matchip    = regexp.MustCompile(`^\d+\.\d+\.\d+\.\d+`) //TODO: make correct
-	filtername = regexp.MustCompile(`\W`)                  //non-words
+	matchip    = regexp.MustCompile(`^\d+\.\d+\.\d+\.\d+`) // TODO: make correct
+	filtername = regexp.MustCompile(`\W`)                  // non-words
 )
 
 type Server struct {

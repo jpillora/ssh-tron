@@ -1,5 +1,3 @@
-//main creates and 'Play's
-//a single game instance
 package tron
 
 import (
@@ -24,8 +22,9 @@ type Game struct {
 	logf                  func(format string, args ...interface{})
 }
 
+// NewGame returns a initialized Game according to the input arguments.
+// The main() function should call the Play() method on this Game.
 func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.Duration) (*Game, error) {
-
 	// create an id pool
 	idPool := make(chan ID, maxplayers)
 	for id := 1; id <= maxplayers; id++ {
@@ -43,16 +42,21 @@ func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.D
 	}
 
 	g := &Game{
-		maxplayers, maxdeaths,
-		speed,
-		delay,
-		width + sidebarWidth, height / 2, width, height,
-		server,
-		nil,
-		board,
-		idPool, 0,
-		make(map[ID]*Player),
-		log.New(os.Stdout, "tron: ", 0).Printf,
+		maxplayers: maxplayers,
+		maxdeaths:  maxdeaths,
+		speed:      speed,
+		delay:      delay,
+		w:          width + sidebarWidth,
+		h:          height / 2,
+		bw:         width,
+		bh:         height,
+		server:     server,
+		sidebar:    nil,
+		board:      board,
+		idPool:     idPool,
+		playerId:   0,
+		players:    make(map[ID]*Player),
+		logf:       log.New(os.Stdout, "tron: ", 0).Printf,
 	}
 
 	g.initSidebar()
@@ -61,7 +65,6 @@ func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.D
 }
 
 func (g *Game) Play() {
-
 	// build walls
 	for w := 0; w < g.bw; w++ {
 		g.board[w][0] = wall

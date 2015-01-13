@@ -1,5 +1,3 @@
-//a player represents a live tcp
-//connection from a client
 package tron
 
 import (
@@ -47,6 +45,7 @@ type resize struct {
 	width, height uint32
 }
 
+// A Player represents a live TCP connection from a client
 type Player struct {
 	id                           ID // identification
 	name, cname                  string
