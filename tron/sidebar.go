@@ -5,8 +5,10 @@ import (
 	"strconv"
 )
 
-const sidebarWidth = 14
-const sidebarEntryHeight = 4
+const (
+	sidebarWidth       = 14
+	sidebarEntryHeight = 4
+)
 
 type Sidebar struct {
 	g       *Game
@@ -17,21 +19,23 @@ type Sidebar struct {
 }
 
 func NewSidebar(g *Game) *Sidebar {
-	//sidebar height - top and bottom rows are borders
+	// sidebar height - top and bottom rows are borders
 	h := g.h - 2
-	sb := &Sidebar{g: g, height: h, runes: make([][]rune, h)}
+	sb := &Sidebar{
+		g:      g,
+		height: h,
+		runes:  make([][]rune, h),
+	}
 	return sb
 }
 
 func (sb *Sidebar) render() {
 
-	//copy all players into a score sorted list
+	// copy all players into a score sorted list
 	sb.ps = make([]*Player, len(sb.g.players))
 
-	i := 0
-	for _, p := range sb.g.players {
+	for i, p := range sb.g.players {
 		sb.ps[i] = p
-		i++
 	}
 
 	sort.Sort(ByScore(sb.ps))
@@ -40,15 +44,15 @@ func (sb *Sidebar) render() {
 
 	for i, p := range sb.ps {
 		row := i * sidebarEntryHeight
-		//skip players who render past the bottom of the screen
+		// skip players who render past the bottom of the screen
 		if row+sidebarEntryHeight-1 >= sb.height {
 			break
 		}
-		//calculate player stats
+		// calculate player stats
 		r0 := []rune(" #" + strconv.Itoa(i+1) + " " + p.name)
 		r1 := []rune("  " + p.status())
 		r2 := []rune("  " + strconv.Itoa(p.kills) + " K/D " + strconv.Itoa(p.deaths))
-		//compare against last
+		// compare against last
 		if !compare(r0, sb.runes[row+0]) ||
 			!compare(r1, sb.runes[row+1]) ||
 			!compare(r2, sb.runes[row+2]) {
@@ -74,7 +78,7 @@ func compare(a, b []rune) bool {
 	return true
 }
 
-//sort players by score (kills then deaths then name)
+// sort players by score (kills then deaths then name)
 type ByScore []*Player
 
 func (ps ByScore) Len() int      { return len(ps) }
