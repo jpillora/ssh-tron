@@ -64,6 +64,7 @@ type Player struct {
 	once                         *sync.Once
 }
 
+// NewPlayer returns an initialized Player.
 func NewPlayer(id ID, name string, conn ssh.Channel) *Player {
 
 	colouredName := fmt.Sprintf("%s%s%s", colours[id], name, ansi.Set(ansi.Reset))

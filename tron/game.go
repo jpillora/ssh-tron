@@ -17,12 +17,12 @@ type Game struct {
 	sidebar               *sidebar      // state
 	board                 Board
 	idPool                chan ID
-	playerId              ID
+	playerID              ID
 	players               map[ID]*Player
 	logf                  func(format string, args ...interface{})
 }
 
-// NewGame returns a initialized Game according to the input arguments.
+// NewGame returns an initialized Game according to the input arguments.
 // The main() function should call the Play() method on this Game.
 func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.Duration) (*Game, error) {
 	// create an id pool
@@ -54,7 +54,7 @@ func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.D
 		sidebar:    nil,
 		board:      board,
 		idPool:     idPool,
-		playerId:   0,
+		playerID:   0,
 		players:    make(map[ID]*Player),
 		logf:       log.New(os.Stdout, "tron: ", 0).Printf,
 	}
