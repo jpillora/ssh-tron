@@ -37,12 +37,17 @@ func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.D
 		return nil, err
 	}
 
+	server, err := NewServer(port, idPool)
+	if err != nil {
+		return nil, err
+	}
+
 	g := &Game{
 		maxplayers, maxdeaths,
 		speed,
 		delay,
 		width + sidebarWidth, height / 2, width, height,
-		NewServer(port, idPool),
+		server,
 		nil,
 		board,
 		idPool, 0, map[ID]*Player{},
