@@ -79,7 +79,7 @@ func NewPlayer(id ID, name string, conn ssh.Channel) *Player {
 		d:       dup,
 		resizes: make(chan resize),
 		conn:    ansi.Wrap(conn),
-		log:     log.New(os.Stdout, colouredName+" ", 0).Printf,
+		logf:    log.New(os.Stdout, colouredName+" ", 0).Printf,
 		once:    &sync.Once{},
 	}
 	return p

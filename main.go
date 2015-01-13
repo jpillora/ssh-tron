@@ -22,10 +22,19 @@ var (
 func main() {
 	flag.Parse()
 
-	if *height < 32 || *width < 32 {
-		log.Fatal("'width' and 'height' must be at least 32")
+	if *height < 32 {
+		log.Fatal(`'height' must be at least 32`)
+	}
+
+	if *width < 32 {
+		log.Fatal(`'width' must be atleast 32`)
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	tron.NewGame(*port, *width, *height, *maxplayers, *maxdeaths, *speed, *delay).Play()
+
+	g, err := tron.NewGame(*port, *width, *height, *maxplayers, *maxdeaths, *speed, *delay)
+	if err != nil {
+		log.Fatal(err)
+	}
+	g.Play()
 }

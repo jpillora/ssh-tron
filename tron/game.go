@@ -24,12 +24,17 @@ type Game struct {
 	logf                  func(format string, vars ...interface{})
 }
 
-func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.Duration) *Game {
+func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.Duration) (*Game, error) {
 
 	// create an id pool
 	idPool := make(chan ID, maxplayers)
 	for id := 1; id <= maxplayers; id++ {
 		idPool <- ID(id)
+	}
+
+	board, err := NewBoard(uint8(width), uint8(height))
+	if err != nil {
+		return nil, err
 	}
 
 	g := &Game{
@@ -39,14 +44,14 @@ func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.D
 		width + sidebarWidth, height / 2, width, height,
 		NewServer(port, idPool),
 		nil,
-		NewBoard(uint8(width), uint8(height)),
+		board,
 		idPool, 0, map[ID]*Player{},
 		log.New(os.Stdout, "tron: ", 0).Printf,
 	}
 
 	g.sidebar = NewSidebar(g)
 
-	return g
+	return g, nil
 }
 
 func (g *Game) Play() {
@@ -156,7 +161,7 @@ func (g *Game) tick() {
 				id := g.board[p.x][p.y]
 				if other, ok := g.players[id]; ok && other != p {
 					other.kills++
-					other.log("killed %s", p.cname)
+					other.logf("killed %s", p.cname)
 				}
 				// this player dies...
 				p.dead = true
