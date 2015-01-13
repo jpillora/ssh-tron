@@ -1,6 +1,6 @@
 ## ssh-tron
 
-Multiplayer [Tron](http://www.classicgamesarcade.com/game/21670/tron-game.html) over SSH, written in Go
+Multiplayer [Tron](http://www.thepcmanwebsite.com/media/flash_tron/) (Light Cycles) over SSH, written in Go
 
 ![tron](https://rawgit.com/jpillora/ssh-tron/master/demo.gif)
 
