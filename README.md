@@ -43,11 +43,11 @@ Server:
 $ tron --help
 Usage of tron:
   -deaths=10: Maximum number of deaths before being kicked
-  -delay=2000: Respawn delay (in ms)
+  -delay=2s: Respawn delay
   -height=60: Height of the game world
   -players=4: Maximum number of simultaneous players
   -port=2200: Port to listen for TCP connections on
-  -speed=25: Game tick interval (in ms)
+  -speed=25ms: Game tick interval
   -width=60: Width of the game world
 
 $ tron

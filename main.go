@@ -9,13 +9,15 @@ import (
 	"github.com/jpillora/ssh-tron/tron"
 )
 
-var port = flag.Int("port", 2200, "Port to listen for TCP connections on")
-var width = flag.Int("width", 60, "Width of the game world")
-var height = flag.Int("height", 60, "Height of the game world")
-var maxplayers = flag.Int("players", 4, "Maximum number of simultaneous players")
-var maxdeaths = flag.Int("deaths", 10, "Maximum number of deaths before being kicked")
-var speed = flag.Int("speed", 25, "Game tick interval (in ms)")
-var delay = flag.Int("delay", 2000, "Respawn delay (in ms)")
+var (
+	port       = flag.Int("port", 2200, "Port to listen for TCP connections on")
+	width      = flag.Int("width", 60, "Width of the game world")
+	height     = flag.Int("height", 60, "Height of the game world")
+	maxplayers = flag.Int("players", 4, "Maximum number of simultaneous players")
+	maxdeaths  = flag.Int("deaths", 10, "Maximum number of deaths before being kicked")
+	speed      = flag.Duration("speed", 25*time.Millisecond, "Game tick interval")
+	delay      = flag.Duration("delay", 2*time.Second, "Respawn delay")
+)
 
 func main() {
 	flag.Parse()
