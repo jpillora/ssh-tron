@@ -59,7 +59,13 @@ func NewGame(port, width, height, maxplayers, maxdeaths int, speed, delay time.D
 		logf:       log.New(os.Stdout, "tron: ", 0).Printf,
 	}
 
-	g.initSidebar()
+	// sidebar height - top and bottom rows are borders
+	h := g.h - 2
+	g.sidebar = &sidebar{
+		g:      g,
+		height: h,
+		runes:  make([][]rune, h),
+	}
 
 	return g, nil
 }

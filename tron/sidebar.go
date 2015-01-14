@@ -18,16 +18,6 @@ type sidebar struct {
 	changed bool
 }
 
-func (g *Game) initSidebar() {
-	// sidebar height - top and bottom rows are borders
-	h := g.h - 2
-	g.sidebar = &sidebar{
-		g:      g,
-		height: h,
-		runes:  make([][]rune, h),
-	}
-}
-
 func (sb *sidebar) render() {
 
 	// copy all players into a score sorted list
