@@ -70,7 +70,7 @@ $ ssh 10.7.0.108 -p 2200
 ### Known Client Issues
 
 * Appears best with a dark terminal background
-* The refresh rate is quite high, so you'll need a low latency connection to the server to play effectively (approximately less than 25ms).
+* The refresh rate is quite high, so you'll need a low latency connection to the server to play effectively (optimally less the game speed - which has a default of 25ms/tick).
 * Only works on operating systems with [braille unicode characters (e.g. "⠶" and "⠛")](http://en.wikipedia.org/wiki/Braille_Patterns#Chart) installed. Operating systems lacking this character set will cause the walls to render as the missing glyph (square or diamond).
 
 ### Todo
