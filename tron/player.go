@@ -65,7 +65,7 @@ type Player struct {
 	id                           ID // identification
 	dbkey                        []byte
 	hash                         string //hash of public key
-	name, cname                  string
+	sshname, name, cname         string
 	x, y                         uint8     // position
 	d                            Direction // curr direction
 	nextd                        Direction // next direction
@@ -83,11 +83,12 @@ type Player struct {
 }
 
 // NewPlayer returns an initialized Player.
-func NewPlayer(id ID, name, hash string, conn ssh.Channel) *Player {
+func NewPlayer(id ID, sshname, name, hash string, conn ssh.Channel) *Player {
 	colouredName := fmt.Sprintf("%s%s%s", colours[id], name, ansi.Set(ansi.Reset))
 	p := &Player{
 		id:      id,
 		hash:    hash,
+		sshname: sshname,
 		name:    name,
 		cname:   colouredName,
 		dead:    true,

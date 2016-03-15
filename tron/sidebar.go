@@ -16,10 +16,15 @@ type sidebar struct {
 	height  int
 	runes   [][]rune
 	changed bool
+	currPs  chan []*Player
 }
 
 func (sb *sidebar) render() {
-
+	//squish it down
+	// sidebarEntryHeight := 6
+	// for len(sb.g.players)*sidebarEntryHeight > sb.height {
+	// 	sidebarEntryHeight--
+	// }
 	// copy all players into a score sorted list
 	sb.ps = make([]*Player, len(sb.g.players))
 	i := 0
@@ -27,11 +32,8 @@ func (sb *sidebar) render() {
 		sb.ps[i] = p
 		i++
 	}
-
 	sort.Sort(byScore(sb.ps))
-
 	changed := false
-
 	for i, p := range sb.ps {
 		row := i * sidebarEntryHeight
 		// skip players who render past the bottom of the screen
@@ -41,7 +43,7 @@ func (sb *sidebar) render() {
 		// calculate player stats
 		r0 := []rune(" #" + strconv.Itoa(i+1) + " " + p.name)
 		r1 := []rune("  " + p.status())
-		r2 := []rune("  " + strconv.Itoa(p.Kills) + " K/D " + strconv.Itoa(p.Deaths))
+		r2 := []rune("  " + strconv.Itoa(p.Kills) + " kills")
 		// compare against last
 		if !compare(r0, sb.runes[row+0]) ||
 			!compare(r1, sb.runes[row+1]) ||
@@ -52,7 +54,9 @@ func (sb *sidebar) render() {
 			changed = true
 		}
 	}
-
+	if changed && len(sb.currPs) == 0 {
+		sb.currPs <- sb.ps //nonblocking queue
+	}
 	sb.changed = changed
 }
 

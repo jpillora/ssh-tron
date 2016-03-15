@@ -2,6 +2,7 @@ package tron
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ type Game struct {
 	db           *Database // database
 	server       *Server   // ssh server
 	sidebar      *sidebar  // state
+	bot          *Bot      // chat bot
 	board        Board
 	idPool       chan ID
 	playerID     ID
@@ -36,18 +38,15 @@ func NewGame(c Config) (*Game, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	board, err := NewBoard(uint8(c.Width), uint8(c.Height))
 	if err != nil {
 		return nil, err
 	}
-
 	// create an id pool
 	idPool := make(chan ID, c.MaxPlayers)
 	for id := 1; id <= c.MaxPlayers; id++ {
 		idPool <- ID(id)
 	}
-
 	server, err := NewServer(db, c.Port, idPool)
 	if err != nil {
 		return nil, err
@@ -62,21 +61,46 @@ func NewGame(c Config) (*Game, error) {
 		db:       db,
 		server:   server,
 		sidebar:  nil,
+		bot:      &Bot{},
 		board:    board,
 		idPool:   idPool,
 		playerID: 0,
 		players:  make(map[ID]*Player),
 		logf:     log.New(os.Stdout, "tron: ", 0).Printf,
 	}
-
 	// sidebar height - top and bottom rows are borders
 	h := g.h - 2
 	g.sidebar = &sidebar{
 		g:      g,
 		height: h,
 		runes:  make([][]rune, h),
+		currPs: make(chan []*Player, 1),
 	}
-
+	// initialise slack if provided
+	if t := c.SlackToken; t != "" {
+		ch := c.SlackChannel
+		if ch == "" {
+			return nil, errors.New("Slack channel must be specified with ")
+		}
+		if err := g.bot.init(t, ch); err != nil {
+			return nil, err
+		}
+		motd := "tron server started\n"
+		if g.Config.JoinAddress != "" {
+			motd += fmt.Sprintf("join using: `ssh %s`", g.Config.JoinAddress)
+		} else {
+			motd += fmt.Sprintf("join using:\n```\n%s\n```\n", g.server.addresses)
+		}
+		if err := g.bot.message(motd); err != nil {
+			return nil, err
+		}
+		go func() {
+			for ps := range g.sidebar.currPs {
+				g.bot.scoreChange(ps)
+			}
+		}()
+		go g.bot.start()
+	}
 	return g, nil
 }
 
@@ -102,8 +126,14 @@ func (g *Game) Play() {
 	signal.Notify(c, os.Interrupt, os.Kill)
 	go g.watch(c)
 
+	addr := g.Config.JoinAddress
+	if addr == "" {
+		addr = "\n" + g.server.addresses
+	}
+
 	// start the ssh server
 	go g.server.start()
+	g.logf("server up (fingerprint %s)\njoin at: %s\n", fingerprintKey(g.server.privateKey.PublicKey()), addr)
 
 	// handle incoming players forever (channel never closed)
 	for p := range g.server.newPlayers {
@@ -172,7 +202,6 @@ func (g *Game) died(p *Player) {
 	if g.RespawnDelay > deathTrail {
 		time.Sleep(g.RespawnDelay - deathTrail)
 	}
-
 	p.waiting = false
 }
 

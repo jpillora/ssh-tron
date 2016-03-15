@@ -1,6 +1,7 @@
 package tron
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
@@ -21,6 +22,7 @@ var (
 
 type Server struct {
 	port       int
+	addresses  string
 	idPool     <-chan ID
 	logf       func(format string, args ...interface{})
 	privateKey ssh.Signer
@@ -37,19 +39,20 @@ func NewServer(db *Database, port int, idPool <-chan ID) (*Server, error) {
 	if err := db.GetPrivateKey(s); err != nil {
 		return nil, err
 	}
+	if addrs, err := net.InterfaceAddrs(); err == nil {
+		b := bytes.Buffer{}
+		for _, a := range addrs {
+			ipv4 := matchip.FindString(a.String())
+			if ipv4 != "" {
+				fmt.Fprintf(&b, "  ○ ssh %s -p %d\n", ipv4, s.port)
+			}
+		}
+		s.addresses = b.String()
+	}
 	return s, nil
 }
 
 func (s *Server) start() {
-	s.logf("up - join at")
-	addrs, _ := net.InterfaceAddrs()
-	for _, a := range addrs {
-		ipv4 := matchip.FindString(a.String())
-		if ipv4 != "" {
-			s.logf("  ○ ssh %s -p %d", ipv4, s.port)
-		}
-	}
-	s.logf("fingerprint - %s", fingerprintKey(s.privateKey.PublicKey()))
 	// bind to provided port
 	server, err := net.ListenTCP("tcp4", &net.TCPAddr{Port: s.port})
 	if err != nil {
@@ -68,12 +71,12 @@ func (s *Server) start() {
 
 func (s *Server) handle(tcpConn *net.TCPConn) {
 	//extract these from connection
-	var name string
+	var sshname string
 	var hash string
 	// perform handshake
 	config := &ssh.ServerConfig{
 		PublicKeyCallback: func(conn ssh.ConnMetadata, publicKey ssh.PublicKey) (*ssh.Permissions, error) {
-			name = conn.User()
+			sshname = conn.User()
 			if publicKey != nil {
 				m := md5.Sum(publicKey.Marshal())
 				hash = hex.EncodeToString(m[:])
@@ -90,7 +93,7 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 	// global requests must be serviced - discard
 	go ssh.DiscardRequests(globalReqs)
 	// protect against XTR (cross terminal renderering) attacks
-	name = filtername.ReplaceAllString(name, "")
+	name := filtername.ReplaceAllString(sshname, "")
 	// trim name
 	maxlen := sidebarWidth - 6
 	if len(name) > maxlen {
@@ -132,7 +135,7 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 	if name == "" {
 		name = fmt.Sprintf("player-%d", id)
 	}
-	p := NewPlayer(id, name, hash, conn)
+	p := NewPlayer(id, sshname, name, hash, conn)
 	go func() {
 		for r := range chanReqs {
 			ok := false
