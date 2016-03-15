@@ -41,7 +41,7 @@ func (sb *sidebar) render() {
 		// calculate player stats
 		r0 := []rune(" #" + strconv.Itoa(i+1) + " " + p.name)
 		r1 := []rune("  " + p.status())
-		r2 := []rune("  " + strconv.Itoa(p.kills) + " K/D " + strconv.Itoa(p.deaths))
+		r2 := []rune("  " + strconv.Itoa(p.Kills) + " K/D " + strconv.Itoa(p.Deaths))
 		// compare against last
 		if !compare(r0, sb.runes[row+0]) ||
 			!compare(r1, sb.runes[row+1]) ||
@@ -75,13 +75,13 @@ type byScore []*Player
 func (ps byScore) Len() int      { return len(ps) }
 func (ps byScore) Swap(i, j int) { ps[i], ps[j] = ps[j], ps[i] }
 func (ps byScore) Less(i, j int) bool {
-	if ps[i].kills > ps[j].kills {
+	if ps[i].Kills > ps[j].Kills {
 		return true
-	} else if ps[i].kills < ps[j].kills {
+	} else if ps[i].Kills < ps[j].Kills {
 		return false
-	} else if ps[i].deaths < ps[j].deaths {
+	} else if ps[i].Deaths < ps[j].Deaths {
 		return true
-	} else if ps[i].deaths > ps[j].deaths {
+	} else if ps[i].Deaths > ps[j].Deaths {
 		return false
 	}
 	return ps[i].id < ps[j].id

@@ -30,6 +30,21 @@ const (
 	dleft
 )
 
+func (d Direction) String() string {
+	switch d {
+	case dup:
+		return "up"
+	case ddown:
+		return "down"
+	case dleft:
+		return "left"
+	case dright:
+		return "right"
+	default:
+		return fmt.Sprintf("%d", d)
+	}
+}
+
 var colours = map[ID][]byte{
 	blank: ansi.Set(ansi.White),
 	wall:  ansi.Set(ansi.White),
@@ -48,14 +63,17 @@ type resize struct {
 // A Player represents a live TCP connection from a client
 type Player struct {
 	id                           ID // identification
+	dbkey                        []byte
+	hash                         string //hash of public key
 	name, cname                  string
 	x, y                         uint8     // position
-	d, nextd                     Direction // direction
+	d                            Direction // curr direction
+	nextd                        Direction // next direction
 	w, h                         int       // terminal size
 	screen                       [][]rune  // the player's view of the screen
 	dead, ready, waiting, redraw bool      // player flags
 	tdeath                       time.Time // time of death
-	kills, deaths                int       // score
+	Kills, Deaths                int       // score
 	playing                      chan bool // is playing signal
 	g                            *Game
 	resizes                      chan resize
@@ -65,12 +83,11 @@ type Player struct {
 }
 
 // NewPlayer returns an initialized Player.
-func NewPlayer(id ID, name string, conn ssh.Channel) *Player {
-
+func NewPlayer(id ID, name, hash string, conn ssh.Channel) *Player {
 	colouredName := fmt.Sprintf("%s%s%s", colours[id], name, ansi.Set(ansi.Reset))
-
 	p := &Player{
 		id:      id,
+		hash:    hash,
 		name:    name,
 		cname:   colouredName,
 		dead:    true,
@@ -81,6 +98,11 @@ func NewPlayer(id ID, name string, conn ssh.Channel) *Player {
 		conn:    ansi.Wrap(conn),
 		logf:    log.New(os.Stdout, colouredName+" ", 0).Printf,
 		once:    &sync.Once{},
+	}
+	if p.hash != "" {
+		p.dbkey = []byte(p.hash)
+	} else {
+		p.dbkey = []byte(p.name)
 	}
 	return p
 }
@@ -112,7 +134,6 @@ func (p *Player) respawn() {
 		p.y = uint8(rand.Intn(int(p.g.bh-2))) + 1
 		p.d = Direction(uint8(rand.Intn(4) + 65))
 		p.nextd = p.d
-
 		// look ahead
 		clear := true
 		x, y := p.x, p.y
@@ -142,13 +163,10 @@ func (p *Player) respawn() {
 
 func (p *Player) play() {
 	p.logf("connected")
-
 	p.conn.Set(ansi.Reset)
 	p.conn.CursorHide()
-
 	go p.resizeWatch()
 	go p.recieveActions()
-
 	// block until player disconnects
 	<-p.playing
 	p.logf("disconnected")
@@ -172,7 +190,7 @@ func (p *Player) status() string {
 	if !p.ready {
 		return "not ready"
 	} else if p.dead && p.waiting {
-		return fmt.Sprintf("dead %1.1f", (p.g.delay - time.Since(p.tdeath)).Seconds())
+		return fmt.Sprintf("dead %1.1f", (p.g.RespawnDelay - time.Since(p.tdeath)).Seconds())
 	} else if p.dead {
 		return "ready"
 	}
@@ -242,22 +260,17 @@ func (p *Player) resizeWatch() {
 
 // every tick, based on player screen size - calculate, store and send screen deltas.
 func (p *Player) update() {
-
 	if !p.ready {
 		return
 	}
-
 	gb := p.g.board
-
 	// center board with offset width and height
 	ow := (p.w - p.g.w) / 2
 	oh := (p.h - p.g.h) / 2
-
 	// store the last rendered for network optimisation
 	var lastw, lasth uint16
 	var r rune
 	var c, lastc []byte
-
 	// screen loop
 	var u []byte
 	for h := 0; h < p.g.h; h++ {
@@ -265,9 +278,7 @@ func (p *Player) update() {
 			// rune and color at terminal w x h
 			r = empty
 			c = colours[blank]
-
 			sidebar := false
-
 			if tw < sidebarWidth {
 				// calculate rune from sidebar
 				if tw == 0 {
@@ -277,7 +288,6 @@ func (p *Player) update() {
 				} else if h == p.g.h-1 {
 					r = bottom
 				} else {
-
 					rs := p.g.sidebar.runes
 					if h-1 < len(rs) && tw-1 < len(rs[h-1]) {
 						i := (h - 1) / sidebarEntryHeight
@@ -289,7 +299,6 @@ func (p *Player) update() {
 						}
 					}
 				}
-
 			} else {
 				// calculate rune from game
 				gw := tw - sidebarWidth
@@ -310,14 +319,9 @@ func (p *Player) update() {
 					c = colours[gb[gw][h2]]
 				}
 			}
-
 			cacheOverride := p.g.sidebar.changed && sidebar
-
 			// player board is different? draw it
 			if p.screen[tw][h] != r || cacheOverride {
-
-				// p.logf("rune differs '%s' %dx%d (%v)", string(r), tw, h, cacheOverride)
-
 				// skip if we only moved one space right
 				nexth := uint16(h + 1 + oh)
 				nextw := uint16(tw + 1 + ow)
@@ -331,7 +335,6 @@ func (p *Player) update() {
 					u = append(u, c...)
 					lastc = c
 				}
-
 				// write rune
 				u = append(u, []byte(string(r))...)
 				// cache
@@ -339,12 +342,9 @@ func (p *Player) update() {
 			}
 		}
 	}
-
 	if len(u) == 0 {
 		return
 	}
-
 	// p.logf("send %d", len(u))
-
 	p.conn.Write(u)
 }
