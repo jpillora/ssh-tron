@@ -141,10 +141,10 @@ func (g *Game) death(p *Player) {
 	p.Deaths++
 	go g.db.SavePlayer(p) //save new death count
 	p.tdeath = time.Now()
-	// maximum deaths! kick!
-	if p.Deaths == g.KickDeaths {
-		p.teardown()
-	}
+	// TODO maximum deaths! kick!
+	// if p.Deaths == g.KickDeaths {
+	// 	p.teardown()
+	// }
 	g.died(p)
 }
 

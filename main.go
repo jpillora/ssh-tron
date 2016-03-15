@@ -16,12 +16,12 @@ var VERSION = "0.0.0-src"
 func main() {
 
 	c := tron.Config{
-		Port:         2200,
-		Width:        60,
-		Height:       60,
-		MaxPlayers:   6,
-		Mode:         "kd",
-		KickDeaths:   5,
+		Port:       2200,
+		Width:      60,
+		Height:     60,
+		MaxPlayers: 6,
+		// Mode:         "kd",
+		// KickDeaths:   5,
 		GameSpeed:    40 * time.Millisecond,
 		RespawnDelay: 2 * time.Second,
 		DBLocation:   filepath.Join(os.TempDir(), "tron.db"),
@@ -29,7 +29,6 @@ func main() {
 
 	opts.New(&c).
 		PkgRepo().
-		PkgAuthor().
 		Version(VERSION).
 		Parse()
 
