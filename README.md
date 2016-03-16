@@ -90,6 +90,30 @@ $ ssh 172.27.1.78 -p 2200
 * The refresh rate is quite high, so you'll need a low latency connection to the server to play effectively (in essense, you want your latency to be lower the game speed - which has a default of 40ms/tick).
 * Only works on operating systems with [braille unicode characters (e.g. "⠶" and "⠛")](http://en.wikipedia.org/wiki/Braille_Patterns#Chart) installed. Operating systems lacking this character set will cause the walls to render as the missing glyph (square or diamond).
 
+### systemd
+
+Create a `/usr/lib/systemd/system/tron.service` file:
+
+```
+[Unit]
+Description=ssh-tron
+
+[Service]
+ExecStart=/path/to/my/ssh-tron -p 22 --join-address tron.company
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then:
+
+```
+systemctl enable tron
+systemctl start tron
+```
+
 ### Todo
 
 * Support multi-core (Fix race conditions)
