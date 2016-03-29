@@ -48,7 +48,7 @@ func (s *scoreboard) compute() {
 			p.index = i
 		}
 	}
-	if s.changed {
+	if s.g.bot.connected && s.changed {
 		s.g.bot.scoreChange(sorted)
 	}
 	s.allPlayersSorted = sorted
