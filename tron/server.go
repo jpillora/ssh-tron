@@ -94,7 +94,7 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 	// protect against XTR (cross terminal renderering) attacks
 	name := filtername.ReplaceAllString(sshName, "")
 	// trim name
-	maxlen := sidebarWidth - 6
+	maxlen := sidebarWidth - 1
 	if len(name) > maxlen {
 		name = string([]rune(name)[:maxlen])
 	}

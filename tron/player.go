@@ -13,6 +13,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+const slotHeight = 4
+
 var (
 	filled = '⣿'
 	top    = '⠛'
@@ -61,28 +63,27 @@ type resize struct {
 
 // A Player represents a live TCP connection from a client
 type Player struct {
-	id                                    ID     // identification
-	hash                                  string //hash of public key
-	SSHName, Name, cname                  string
-	rank, index                           int
-	x, y                                  uint8     // position
-	d                                     Direction // curr direction
-	nextd                                 Direction // next direction
-	w, h                                  int       // terminal size
-	screenRunes                           [][]rune  // the player's view of the screen
-	screenColors                          [][]ID    // the player's view of the screen
-	score                                 [slotHeight]string
-	scoreDrawn                            bool
-	dead, ready, waiting, sending, redraw bool // player flags
-
-	tdeath        time.Time // time of death
-	Kills, Deaths int       // score
-	playing       chan bool // is playing signal
-	g             *Game
-	resizes       chan resize
-	conn          *ansi.Ansi
-	logf          func(format string, args ...interface{})
-	once          *sync.Once
+	id                   ID     // identification
+	hash                 string //hash of public key
+	SSHName, Name, cname string
+	rank, index          int
+	x, y                 uint8     // position
+	d                    Direction // curr direction
+	nextd                Direction // next direction
+	w, h                 int       // terminal size
+	screenRunes          [][]rune  // the player's view of the screen
+	screenColors         [][]ID    // the player's view of the screen
+	score                [slotHeight]string
+	scoreDrawn, redraw   bool
+	dead, ready, waiting bool
+	tdeath               time.Time // time of death
+	Kills, Deaths        int       // score
+	playing              chan bool // is playing signal
+	g                    *Game
+	resizes              chan resize
+	conn                 *ansi.Ansi
+	logf                 func(format string, args ...interface{})
+	once                 *sync.Once
 }
 
 // NewPlayer returns an initialized Player.
@@ -117,7 +118,7 @@ func (p *Player) resetScreen() {
 		p.screenColors[w] = make([]ID, p.g.h)
 		for h := 0; h < p.g.h; h++ {
 			p.screenRunes[w][h] = empty
-			p.screenColors[w][h] = blank
+			p.screenColors[w][h] = ID(255)
 		}
 	}
 	p.redraw = true
@@ -132,7 +133,6 @@ func (p *Player) respawn() {
 	if !p.dead || !p.ready || p.waiting {
 		return
 	}
-
 	for i := 0; i < respawnAttempts; i++ {
 		// randomly spawn player
 		p.x = uint8(rand.Intn(int(p.g.bw-2))) + 1
@@ -241,7 +241,6 @@ var resizeTmpl = string(ansi.Goto(2, 5)) +
 	"Please resize your terminal to %dx%d (+%dx+%d)"
 
 func (p *Player) resizeWatch() {
-
 	for r := range p.resizes {
 		p.w = int(r.width)
 		p.h = int(r.height)
@@ -263,11 +262,9 @@ func (p *Player) resizeWatch() {
 	}
 }
 
-const slotHeight = 3
-
 // every tick, based on player screen size - calculate, store and send screen deltas.
 func (p *Player) update() {
-	if !p.ready || p.sending {
+	if !p.ready {
 		return
 	}
 	g := p.g
@@ -311,21 +308,23 @@ func (p *Player) update() {
 					playerSlot := bh / slotHeight
 					playerIndex := startIndex + playerSlot
 					if playerIndex < totalPlayers {
-						p := g.score.allPlayersSorted[playerIndex]
+						sp := g.score.allPlayersSorted[playerIndex]
 						line := bh % slotHeight
-						if (g.score.changed || p.score[line] == "") && tw == 1 {
+						if tw == 1 {
 							switch line {
 							case 0:
-								p.score[0] = fmt.Sprintf("%s            ", p.Name)
+								sp.score[0] = fmt.Sprintf("%s            ", sp.Name)
 							case 1:
-								p.score[1] = fmt.Sprintf("  rank  #%03d  ", p.rank)
+								sp.score[1] = fmt.Sprintf("  rank  #%03d  ", sp.rank)
 							case 2:
-								p.score[2] = fmt.Sprintf("  kills %4d   ", p.Kills)
+								sp.score[2] = fmt.Sprintf("  %s           ", sp.status())
+							case 3:
+								sp.score[3] = fmt.Sprintf("  kills %4d   ", sp.Kills)
 							}
 						}
-						if tw-1 < len(p.score[line]) {
-							r = rune(p.score[line][tw-1])
-							c = p.id
+						if tw-1 < len(sp.score[line]) {
+							r = rune(sp.score[line][tw-1])
+							c = sp.id
 						}
 					}
 				}
@@ -351,7 +350,7 @@ func (p *Player) update() {
 			}
 			// player board is different? draw it
 			if p.screenRunes[tw][h] != r ||
-				p.screenColors[tw][h] != c {
+				(p.screenRunes[tw][h] != empty && p.screenColors[tw][h] != c) {
 				// skip if we only moved one space right
 				nexth := uint16(h + 1 + oh)
 				nextw := uint16(tw + 1 + ow)
@@ -360,11 +359,10 @@ func (p *Player) update() {
 					lasth = nexth
 					lastw = nextw
 				}
-				// write if we change color
-				if c != p.screenColors[tw][h] {
-					u = append(u, colours[c]...)
-					p.screenColors[tw][h] = c
-				}
+				// p.logf("draw [%d,%d] '%s' (%d)", nexth, nextw, string(r), c)
+				// write color
+				u = append(u, colours[c]...)
+				p.screenColors[tw][h] = c
 				// write rune
 				u = append(u, []byte(string(r))...)
 				p.screenRunes[tw][h] = r
@@ -374,14 +372,6 @@ func (p *Player) update() {
 	if len(u) == 0 {
 		return
 	}
-	// p.sending = true
-	// go func() {
-	if _, err := p.conn.Write(u); err != nil {
-		p.resetScreen()
-		p.logf("write err: %s", err)
-		return
-	}
+	p.conn.Write(u)
 	// p.logf("send %d", len(u))
-	// p.sending = false
-	// }()
 }

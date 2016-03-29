@@ -7,14 +7,14 @@ const (
 	sidebarEntryHeight = 4
 )
 
-//
+//scoreboard
 type scoreboard struct {
 	g                *Game
 	changed          bool
 	allPlayersSorted []*Player
 }
 
-//
+//compute the score
 func (s *scoreboard) compute() {
 	// pull in player list and sort
 	sorted := make([]*Player, len(s.g.allPlayers))
@@ -46,6 +46,7 @@ func (s *scoreboard) compute() {
 				s.changed = true
 			}
 			p.index = i
+			last = p
 		}
 	}
 	if s.g.bot.connected && s.changed {

@@ -74,9 +74,13 @@ func (db *Database) load(p *Player) error {
 		if val == nil {
 			return nil
 		}
-		if err := json.Unmarshal(val, p); err != nil {
+		tmp := Player{}
+		if err := json.Unmarshal(val, &tmp); err != nil {
 			return err
 		}
+		//only load KDs
+		p.Kills = tmp.Kills
+		p.Deaths = tmp.Deaths
 		return nil
 	})
 	if err != nil {
