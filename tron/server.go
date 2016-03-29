@@ -1,7 +1,6 @@
 package tron
 
 import (
-	"bytes"
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
@@ -40,14 +39,14 @@ func NewServer(db *Database, port int, idPool <-chan ID) (*Server, error) {
 		return nil, err
 	}
 	if addrs, err := net.InterfaceAddrs(); err == nil {
-		b := bytes.Buffer{}
+		joins := []string{}
 		for _, a := range addrs {
 			ipv4 := matchip.FindString(a.String())
 			if ipv4 != "" {
-				fmt.Fprintf(&b, "  ○ ssh %s -p %d\n", ipv4, s.port)
+				joins = append(joins, fmt.Sprintf(" ssh %s -p %d", ipv4, s.port))
 			}
 		}
-		s.addresses = b.String()
+		s.addresses = strings.Join(joins, "\n")
 	}
 	return s, nil
 }
@@ -71,12 +70,12 @@ func (s *Server) start() {
 
 func (s *Server) handle(tcpConn *net.TCPConn) {
 	//extract these from connection
-	var sshname string
+	var sshName string
 	var hash string
 	// perform handshake
 	config := &ssh.ServerConfig{
 		PublicKeyCallback: func(conn ssh.ConnMetadata, publicKey ssh.PublicKey) (*ssh.Permissions, error) {
-			sshname = conn.User()
+			sshName = conn.User()
 			if publicKey != nil {
 				m := md5.Sum(publicKey.Marshal())
 				hash = hex.EncodeToString(m[:])
@@ -93,7 +92,7 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 	// global requests must be serviced - discard
 	go ssh.DiscardRequests(globalReqs)
 	// protect against XTR (cross terminal renderering) attacks
-	name := filtername.ReplaceAllString(sshname, "")
+	name := filtername.ReplaceAllString(sshName, "")
 	// trim name
 	maxlen := sidebarWidth - 6
 	if len(name) > maxlen {
@@ -135,7 +134,13 @@ func (s *Server) handle(tcpConn *net.TCPConn) {
 	if name == "" {
 		name = fmt.Sprintf("player-%d", id)
 	}
-	p := NewPlayer(id, sshname, name, hash, conn)
+	// if user has no public key for some strange reason, use their ip as their unique id
+	if hash == "" {
+		if ip, _, err := net.SplitHostPort(tcpConn.RemoteAddr().String()); err == nil {
+			hash = ip
+		}
+	}
+	p := NewPlayer(id, sshName, name, hash, conn)
 	go func() {
 		for r := range chanReqs {
 			ok := false

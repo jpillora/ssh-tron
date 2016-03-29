@@ -8,11 +8,14 @@ import (
 	"github.com/nlopes/slack"
 )
 
+const topNumPlayers = 10
+
 type Bot struct {
-	api     *slack.Client
-	channel string
-	top     *Player
-	scores  string
+	connected bool
+	api       *slack.Client
+	channel   string
+	top       *Player
+	scores    string
 }
 
 func (b *Bot) init(token, channel string) error {
@@ -22,13 +25,19 @@ func (b *Bot) init(token, channel string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("authenticated on slack as: %s", resp.User)
+	fmt.Printf("authenticated on slack as: %s\n", resp.User)
+	b.connected = true
 	return nil
 }
 
 func (b *Bot) message(msg string) error {
-	if _, _, err := b.api.PostMessage("#"+b.channel, msg, slack.PostMessageParameters{AsUser: true}); err != nil {
-		return err //fmt.Errorf("failed to send slack message to channel: %s: %s", channel, err)
+	return b.messageTo("#"+b.channel, msg)
+}
+
+func (b *Bot) messageTo(to, msg string) error {
+	if _, _, err := b.api.PostMessage(to, msg, slack.PostMessageParameters{AsUser: true}); err != nil {
+		log.Printf("failed to send slack message to: %s: %s", to, err)
+		return err
 	}
 	return nil
 }
@@ -36,19 +45,21 @@ func (b *Bot) message(msg string) error {
 var scoresRe = regexp.MustCompile(`(?i)tron\s*scores?\b`)
 
 func (b *Bot) scoreChange(ps []*Player) {
-	if len(ps) > 5 {
-		ps = ps[:5]
+	if len(ps) > topNumPlayers {
+		ps = ps[:topNumPlayers]
 	}
 	var top *Player
 	b.scores = ""
+	//keep rendered string of scores
 	for i, p := range ps {
 		if i == 0 && p.Kills > 0 {
 			top = p
 		}
-		b.scores += fmt.Sprintf("#%d *%s* `%d` kills\n", i+1, p.sshname, p.Kills)
+		b.scores += fmt.Sprintf("#%d *%s* `%d` kills\n", p.rank, p.SSHName, p.Kills)
 	}
-	if top != nil && b.top != top && (b.top == nil || top.Kills > b.top.Kills) {
-		b.message("*" + top.sshname + "* has taken the lead!\n\n" + b.scores)
+	//if leader changed, send message
+	if top != nil && b.top != top && (b.top == nil || top.rank > b.top.rank) {
+		b.message("*" + top.SSHName + "* has taken the lead!\n\n" + b.scores)
 		b.top = top
 	}
 }
@@ -63,7 +74,13 @@ func (b *Bot) start() {
 			case *slack.MessageEvent:
 				// log.Printf("%s, %s, %s", ev.Channel, ev.Text, ev.User)
 				if scoresRe.MatchString(ev.Text) {
-					b.message(b.scores)
+					if ch, err := b.api.GetChannelInfo(ev.Channel); err == nil {
+						b.messageTo("#"+ch.Name, b.scores)
+					} else if us, err := b.api.GetUserInfo(ev.User); err == nil {
+						b.messageTo("@"+us.Name, b.scores)
+					} else {
+						b.message(b.scores)
+					}
 				}
 			case *slack.RTMError:
 				log.Printf("Error: %s\n", ev.Error())

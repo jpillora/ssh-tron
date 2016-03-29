@@ -42,7 +42,7 @@ func NewDatabase(loc string, reset bool) (*Database, error) {
 	return db, nil
 }
 
-func (db *Database) SavePlayer(p *Player) error {
+func (db *Database) save(p *Player) error {
 	err := db.Update(func(tx *bolt.Tx) error {
 		ps, err := tx.CreateBucketIfNotExists(playerBucket)
 		if err != nil {
@@ -52,7 +52,7 @@ func (db *Database) SavePlayer(p *Player) error {
 		if err != nil {
 			return err
 		}
-		if err := ps.Put(p.dbkey, val); err != nil {
+		if err := ps.Put([]byte(p.hash), val); err != nil {
 			return err
 		}
 		return nil
@@ -64,13 +64,13 @@ func (db *Database) SavePlayer(p *Player) error {
 	return nil
 }
 
-func (db *Database) LoadPlayer(p *Player) error {
+func (db *Database) load(p *Player) error {
 	err := db.View(func(tx *bolt.Tx) error {
 		ps := tx.Bucket(playerBucket)
 		if ps == nil {
 			return nil
 		}
-		val := ps.Get(p.dbkey)
+		val := ps.Get([]byte(p.hash))
 		if val == nil {
 			return nil
 		}
@@ -84,6 +84,29 @@ func (db *Database) LoadPlayer(p *Player) error {
 		return err
 	}
 	return nil
+}
+
+func (db *Database) loadAll() ([]*Player, error) {
+	players := []*Player{}
+	err := db.View(func(tx *bolt.Tx) error {
+		ps := tx.Bucket(playerBucket)
+		if ps == nil {
+			return nil
+		}
+		return ps.ForEach(func(key []byte, val []byte) error {
+			p := &Player{}
+			if err := json.Unmarshal(val, p); err != nil {
+				return err
+			}
+			p.hash = string(key)
+			players = append(players, p)
+			return nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return players, nil
 }
 
 func (db *Database) GetPrivateKey(s *Server) error {
@@ -111,17 +134,15 @@ func (db *Database) GetPrivateKey(s *Server) error {
 	if err != nil {
 		return err
 	}
-	if p, err := ssh.ParsePrivateKey(val); err == nil {
+	if p, keyerr := ssh.ParsePrivateKey(val); err == nil {
 		s.privateKey = p
 	} else {
-		return err
+		return keyerr
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists(configBucket)
-		if err != nil {
+		if b, err := tx.CreateBucketIfNotExists(configBucket); err != nil {
 			return err
-		}
-		if err := b.Put(configSSHKey, val); err == nil {
+		} else if err := b.Put(configSSHKey, val); err == nil {
 			return err
 		}
 		return nil

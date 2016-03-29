@@ -18,4 +18,4 @@ type Config struct {
 
 // TODO
 // KickDeaths   int           `help:"Punish bad players by kicking them out after N deaths in a row"`
-// Mode         string        `help:"Maximum number of deaths before being kicked"`
+// Mode         string        `help:"Score by players running into your trail, or score by creating the longest trail"`
