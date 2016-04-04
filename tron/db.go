@@ -1,9 +1,8 @@
 package tron
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -158,13 +157,10 @@ func (db *Database) GetPrivateKey(s *Server) error {
 }
 
 func genPrivateKey() ([]byte, error) {
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, err
 	}
-	ec, err := x509.MarshalECPrivateKey(priv)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to marshal ECDSA private key: %v", err)
-	}
-	return pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: ec}), nil
+	key := x509.MarshalPKCS1PrivateKey(priv)
+	return pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: key}), nil
 }
