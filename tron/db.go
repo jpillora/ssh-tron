@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 
@@ -120,9 +121,12 @@ func (db *Database) GetPrivateKey(s *Server) error {
 		}
 		key := b.Get(configSSHKey)
 		if key != nil {
-			if p, err := ssh.ParsePrivateKey(key); err == nil {
-				s.privateKey = p
-				return nil
+			//only load RSA keys
+			if strings.Contains(string(key), "RSA PRIVATE KEY") {
+				if p, err := ssh.ParsePrivateKey(key); err == nil {
+					s.privateKey = p
+					return nil
+				}
 			}
 		}
 		return nil
